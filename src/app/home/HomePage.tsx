@@ -203,6 +203,7 @@ export default function HomePage() {
 
   const token = useAppSelector((s) => s.auth.token);
   const user = useAppSelector((s) => s.auth.user);
+  const cartItemCount = useAppSelector((s) => s.cart.itemCount);
   const isLoggedIn = Boolean(token);
 
   const profilePhoto = user?.profilePhoto ?? null;
@@ -252,7 +253,17 @@ export default function HomePage() {
                   />
                 </button>
 
-                <button type="button" aria-label="Bag" className="relative">
+                <button
+                  type="button"
+                  aria-label="Bag"
+                  className="relative"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    setPressedCta(null);
+                    setIsSearchOpen(false);
+                    router.push("/cart");
+                  }}
+                >
                   <Image
                     src="/Home/Bag.svg"
                     alt=""
@@ -260,14 +271,10 @@ export default function HomePage() {
                     height={28}
                     className="h-7 w-7"
                   />
-                  {SHOW_BAG_BADGE ? (
-                    <Image
-                      src="/Home/Frame92.svg"
-                      alt=""
-                      width={20}
-                      height={20}
-                      className="absolute -right-2 -top-2 h-5 w-5"
-                    />
+                  {SHOW_BAG_BADGE && cartItemCount > 0 ? (
+                    <div className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-red px-1 text-[10px] font-bold text-base-white">
+                      {cartItemCount}
+                    </div>
                   ) : null}
                 </button>
 

@@ -5,6 +5,8 @@ import { useEffect, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { hydrateFromStorage } from "@/features/auth/authSlice";
 import { meApi } from "@/features/auth/authApi";
+import { getMyCartApi } from "@/features/cart/cartApi";
+import { setCartItemCount } from "@/features/cart/cartSlice";
 import type { User } from "@/shared/types/entities";
 
 const STORAGE_KEY = "libraryapp.auth";
@@ -34,6 +36,7 @@ export function AuthBootstrap() {
   const token = useAppSelector((s) => s.auth.token);
   const user = useAppSelector((s) => s.auth.user);
   const didFetchMe = useRef(false);
+  const didFetchCart = useRef(false);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -53,6 +56,7 @@ export function AuthBootstrap() {
   useEffect(() => {
     if (!token) {
       didFetchMe.current = false;
+      didFetchCart.current = false;
       return;
     }
     if (didFetchMe.current) return;
@@ -64,6 +68,26 @@ export function AuthBootstrap() {
       })
       .catch(() => {
         // ignore - keep stored user (if any)
+      });
+  }, [dispatch, token]);
+
+  useEffect(() => {
+    if (!token) return;
+    if (didFetchCart.current) return;
+
+    didFetchCart.current = true;
+    getMyCartApi()
+      .then((cart) => {
+        const itemCount =
+          typeof cart.itemCount === "number"
+            ? cart.itemCount
+            : Array.isArray(cart.items)
+              ? cart.items.length
+              : 0;
+        dispatch(setCartItemCount(itemCount));
+      })
+      .catch(() => {
+        // ignore - keep default 0 badge
       });
   }, [dispatch, token]);
 
