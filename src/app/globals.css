@@ -1,0 +1,290 @@
+@config "../../tailwind.config.cjs";
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-quicksand);
+  --font-mono: var(--font-quicksand);
+  --font-display: var(--font-quicksand);
+
+  /* Spacing scale (from Figma) */
+  --spacing-none: 0rem; /* 0px */
+  --spacing-xxs: 0.125rem; /* 2px */
+  --spacing-xs: 0.25rem; /* 4px */
+  --spacing-sm: 0.375rem; /* 6px */
+  --spacing-md: 0.5rem; /* 8px */
+  --spacing-lg: 0.75rem; /* 12px */
+  --spacing-xl: 1rem; /* 16px */
+  --spacing-2xl: 1.25rem; /* 20px */
+  --spacing-3xl: 1.5rem; /* 24px */
+  --spacing-4xl: 2rem; /* 32px */
+  --spacing-5xl: 2.5rem; /* 40px */
+  --spacing-6xl: 3rem; /* 48px */
+  --spacing-7xl: 4rem; /* 64px */
+  --spacing-8xl: 5rem; /* 80px */
+  --spacing-9xl: 6rem; /* 96px */
+  --spacing-10xl: 8rem; /* 128px */
+  --spacing-11xl: 8.75rem; /* 140px */
+
+  --color-neutral-25: var(--neutral-25);
+  --color-neutral-50: var(--neutral-50);
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-900: var(--neutral-900);
+  --color-neutral-950: var(--neutral-950);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-600: var(--primary-600);
+  --color-accent-red: var(--accent-red);
+  --color-accent-green: var(--accent-green);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-base-white: var(--base-white);
+  --color-base-black: var(--base-black);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  /* Radius scale (from Figma) */
+  --radius-xxs: 0.125rem; /* 2px */
+  --radius-xs: 0.25rem; /* 4px */
+  --radius-sm: 0.375rem; /* 6px */
+  --radius-md: 0.5rem; /* 8px */
+  --radius-lg: 0.625rem; /* 10px */
+  --radius-xl: 0.75rem; /* 12px */
+  --radius-2xl: 1rem; /* 16px */
+  --radius-3xl: 1.25rem; /* 20px */
+  --radius-4xl: 1.5rem; /* 24px */
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* Palette (from Figma) */
+  --neutral-25: #fdfdfd;
+  --neutral-50: #fafafa;
+  --neutral-100: #f5f5f5;
+  --neutral-200: #e9eaeb;
+  --neutral-300: #d5d7da;
+  --neutral-400: #a4a7ae;
+  --neutral-500: #717680;
+  --neutral-600: #535862;
+  --neutral-700: #414651;
+  --neutral-800: #252b37;
+  --neutral-900: #1b1d27;
+  --neutral-950: #0a0d12;
+
+  --primary-100: #f6f9ff;
+  --primary-200: #d2e3ff;
+  --primary-600: #1c65da;
+
+  --accent-red: #d9206e;
+  --accent-green: #079455;
+  --accent-yellow: #fdb022;
+
+  --base-white: #ffffff;
+  --base-black: #000000;
+
+  --helper-text: #ee1d52;
+
+  /* Semantic tokens (shadcn) */
+  --background: var(--base-white);
+  --foreground: var(--neutral-900);
+  --card: var(--base-white);
+  --card-foreground: var(--neutral-900);
+  --popover: var(--base-white);
+  --popover-foreground: var(--neutral-900);
+  --primary: var(--primary-600);
+  --primary-foreground: var(--base-white);
+  --secondary: var(--neutral-50);
+  --secondary-foreground: var(--neutral-900);
+  --muted: var(--neutral-100);
+  --muted-foreground: var(--neutral-600);
+  --accent: var(--neutral-50);
+  --accent-foreground: var(--neutral-900);
+  --destructive: var(--accent-red);
+  --border: var(--neutral-200);
+  --input: var(--neutral-200);
+  --ring: var(--primary-600);
+
+  /* Optional tokens still used by shadcn examples */
+  --chart-1: var(--primary-600);
+  --chart-2: var(--accent-green);
+  --chart-3: var(--accent-yellow);
+  --chart-4: var(--neutral-700);
+  --chart-5: var(--neutral-500);
+  --sidebar: var(--neutral-25);
+  --sidebar-foreground: var(--neutral-900);
+  --sidebar-primary: var(--primary-600);
+  --sidebar-primary-foreground: var(--base-white);
+  --sidebar-accent: var(--neutral-50);
+  --sidebar-accent-foreground: var(--neutral-900);
+  --sidebar-border: var(--neutral-200);
+  --sidebar-ring: var(--primary-600);
+}
+
+.dark {
+  --background: var(--neutral-950);
+  --foreground: var(--neutral-25);
+  --card: var(--neutral-900);
+  --card-foreground: var(--neutral-25);
+  --popover: var(--neutral-900);
+  --popover-foreground: var(--neutral-25);
+  --primary: var(--primary-200);
+  --primary-foreground: var(--neutral-950);
+  --secondary: var(--neutral-800);
+  --secondary-foreground: var(--neutral-25);
+  --muted: var(--neutral-800);
+  --muted-foreground: var(--neutral-400);
+  --accent: var(--neutral-800);
+  --accent-foreground: var(--neutral-25);
+  --destructive: var(--accent-red);
+  --border: var(--neutral-800);
+  --input: var(--neutral-800);
+  --ring: var(--primary-200);
+  --chart-1: var(--primary-200);
+  --chart-2: var(--accent-green);
+  --chart-3: var(--accent-yellow);
+  --chart-4: var(--neutral-400);
+  --chart-5: var(--neutral-500);
+  --sidebar: var(--neutral-900);
+  --sidebar-foreground: var(--neutral-25);
+  --sidebar-primary: var(--primary-200);
+  --sidebar-primary-foreground: var(--neutral-950);
+  --sidebar-accent: var(--neutral-800);
+  --sidebar-accent-foreground: var(--neutral-25);
+  --sidebar-border: var(--neutral-800);
+  --sidebar-ring: var(--primary-200);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer utilities {
+  .text-helper {
+    color: var(--helper-text);
+  }
+
+  .border-helper {
+    border-color: var(--helper-text);
+  }
+
+  .rounded-xxs {
+    border-radius: var(--radius-xxs);
+  }
+
+  .rounded-xs {
+    border-radius: var(--radius-xs);
+  }
+
+  .text-text-6xl {
+    font-size: 4.5rem;
+    line-height: 5.625rem;
+    letter-spacing: -0.02em;
+  }
+
+  .text-display-3xl {
+    font-size: 3.75rem;
+    line-height: 4.5rem;
+  }
+
+  .text-display-2xl {
+    font-size: 3rem;
+    line-height: 3.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  .text-display-xl {
+    font-size: 2.5rem;
+    line-height: 3rem;
+    letter-spacing: -0.02em;
+  }
+
+  .text-display-lg {
+    font-size: 2.25rem;
+    line-height: 2.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  .text-display-md {
+    font-size: 2rem;
+    line-height: 2.5rem;
+  }
+
+  .text-display-sm {
+    font-size: 1.75rem;
+    line-height: 2.375rem;
+  }
+
+  .text-display-xs {
+    font-size: 1.5rem;
+    line-height: 2.25rem;
+  }
+
+  .text-text-xl {
+    font-size: 1.25rem;
+    line-height: 2.125rem;
+  }
+
+  .text-text-lg {
+    font-size: 1.125rem;
+    line-height: 2rem;
+  }
+
+  .text-text-md {
+    font-size: 1rem;
+    line-height: 1.875rem;
+  }
+
+  .text-text-sm {
+    font-size: 0.875rem;
+    line-height: 1.75rem;
+  }
+
+  .text-text-xs {
+    font-size: 0.75rem;
+    line-height: 1.5rem;
+  }
+}
