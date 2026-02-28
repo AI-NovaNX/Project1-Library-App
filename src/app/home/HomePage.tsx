@@ -729,8 +729,11 @@ export default function HomePage() {
                   {displayedBooks
                     .slice(0, 10 * displayedBooksPageCount)
                     .map((book) => (
-                      <div
+                      <button
                         key={book.id}
+                        type="button"
+                        onClick={() => router.push(`/books/${book.id}`)}
+                        aria-label={`View details for ${book.title ?? "book"}`}
                         className="overflow-hidden rounded-2xl border border-neutral-100 bg-base-white shadow-sm"
                       >
                         <div className="relative aspect-3/4 w-full bg-neutral-100">
@@ -769,7 +772,7 @@ export default function HomePage() {
                             </span>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     ))}
                 </div>
 

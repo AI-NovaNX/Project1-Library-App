@@ -20,7 +20,7 @@ export default function ProfilePlaceholderPage() {
       <div className="mx-auto w-full max-w-96">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold tracking-tight">Profile</h1>
-          <Button variant="outline" onClick={() => router.push("/books")}>
+          <Button variant="outline" onClick={() => router.push("/")}>
             Back
           </Button>
         </div>
