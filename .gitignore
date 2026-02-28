@@ -26,3 +26,7 @@ out
 *.njsproj
 *.sln
 *.sw?
+
+# Design artifacts (too large for GitHub)
+Library App.fig
+Library App.pdf
