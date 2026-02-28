@@ -1,6 +1,24 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-import { getBooksApi, getRecommendedBooksApi } from "@/features/books/booksApi";
+import {
+  getBookByIdApi,
+  getBooksApi,
+  getRecommendedBooksApi,
+} from "@/features/books/booksApi";
+
+export function useBookById(params: {
+  id?: string | number;
+  enabled?: boolean;
+}) {
+  return useQuery({
+    queryKey: ["book", { id: params.id ?? null }],
+    enabled: (params.enabled ?? true) && params.id !== undefined,
+    queryFn: async () => {
+      if (params.id === undefined) throw new Error("Missing book id");
+      return getBookByIdApi(params.id);
+    },
+  });
+}
 
 export function useBooksInfinite(params: {
   search?: string;

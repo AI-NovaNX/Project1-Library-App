@@ -27,6 +27,15 @@ export type GetRecommendedBooksResponse = {
   pagination: Pagination;
 };
 
+export type GetBookByIdResponse = Book & {
+  // Backend may include full reviews on this endpoint.
+  reviews?: unknown[];
+  // Some seeds/backends may include page count fields.
+  pages?: number;
+  pageCount?: number;
+  totalPages?: number;
+};
+
 export async function getBooksApi(
   params: GetBooksParams,
 ): Promise<GetBooksResponse> {
@@ -57,5 +66,14 @@ export async function getRecommendedBooksApi(
     },
   );
 
+  return res.data.data;
+}
+
+export async function getBookByIdApi(
+  id: string | number,
+): Promise<GetBookByIdResponse> {
+  const res = await http.get<ApiEnvelope<GetBookByIdResponse>>(
+    `/api/books/${id}`,
+  );
   return res.data.data;
 }
