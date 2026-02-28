@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { hydrateFromStorage } from "@/features/auth/authSlice";
-import { meApi } from "@/features/auth/authApi";
+import { meApiWithToken } from "@/features/auth/authApi";
 import { getMyCartApi } from "@/features/cart/cartApi";
 import { setCartItemCount } from "@/features/cart/cartSlice";
 import type { User } from "@/shared/types/entities";
@@ -62,7 +62,7 @@ export function AuthBootstrap() {
     if (didFetchMe.current) return;
 
     didFetchMe.current = true;
-    meApi()
+    meApiWithToken(token)
       .then((freshUser) => {
         dispatch(hydrateFromStorage({ token, user: freshUser }));
       })

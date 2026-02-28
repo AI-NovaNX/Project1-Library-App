@@ -56,12 +56,14 @@ function DrawerContent({
   children,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Content> & {
+  side?: "bottom" | "top";
   hideOverlay?: boolean;
   overlayClassName?: string;
   hideHandle?: boolean;
   handleClassName?: string;
 }) {
   const {
+    side = "bottom",
     hideOverlay,
     overlayClassName,
     hideHandle,
@@ -69,13 +71,19 @@ function DrawerContent({
     ...contentProps
   } = props;
 
+  const positionClasses =
+    side === "top"
+      ? "top-0 mb-24 rounded-b-2xl"
+      : "bottom-0 mt-24 rounded-t-2xl";
+
   return (
     <DrawerPortal>
       {hideOverlay ? null : <DrawerOverlay className={overlayClassName} />}
       <DrawerPrimitive.Content
         data-slot="drawer-content"
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[85dvh] flex-col rounded-t-2xl border border-neutral-200 bg-base-white",
+          "fixed inset-x-0 z-50 flex max-h-[85dvh] flex-col border border-neutral-200 bg-base-white",
+          positionClasses,
           className,
         )}
         {...contentProps}

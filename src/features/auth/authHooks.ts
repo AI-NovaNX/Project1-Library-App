@@ -1,10 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
 
-import { useAppDispatch } from "@/app/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { setAuth, setUser } from "@/features/auth/authSlice";
 import {
   loginApi,
-  meApi,
+  meApiWithToken,
   registerApi,
   type LoginRequest,
   type RegisterRequest,
@@ -42,11 +42,12 @@ export function useRegister() {
 
 export function useMe() {
   const dispatch = useAppDispatch();
+  const token = useAppSelector((s) => s.auth.token);
 
   return useMutation({
     mutationFn: async () => {
       try {
-        return await meApi();
+        return await meApiWithToken(token);
       } catch (err) {
         throw new Error(getErrorMessage(err));
       }

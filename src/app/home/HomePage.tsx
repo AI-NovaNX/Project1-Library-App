@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuthedImageUrl } from "@/shared/lib/useAuthedImageUrl";
+
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -208,11 +210,20 @@ export default function HomePage() {
 
   const profilePhoto = user?.profilePhoto ?? null;
 
-  const profilePhotoSrc = profilePhoto
+  const profilePhotoUrl = profilePhoto
     ? profilePhoto.startsWith("http")
       ? profilePhoto
       : `https://library-backend-production-b9cf.up.railway.app${profilePhoto.startsWith("/") ? "" : "/"}${profilePhoto}`
     : null;
+
+  const profilePhotoSrc = useAuthedImageUrl({
+    url: profilePhotoUrl,
+    token,
+    fallbackUrl: "/Home/Ellipse3.svg",
+  });
+
+  const avatarUnoptimized =
+    profilePhotoSrc.startsWith("data:") || profilePhotoSrc.startsWith("blob:");
 
   return (
     <div className="min-h-dvh bg-neutral-50 px-xl">
@@ -283,25 +294,15 @@ export default function HomePage() {
                     <DropdownMenuTrigger asChild>
                       <button type="button" aria-label="Profile menu">
                         <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
-                          {profilePhotoSrc ? (
-                            <Image
-                              src={profilePhotoSrc}
-                              alt={
-                                user?.name
-                                  ? `${user.name} avatar`
-                                  : "User avatar"
-                              }
-                              fill
-                              sizes="40px"
-                            />
-                          ) : (
-                            <Image
-                              src="/Home/Ellipse3.svg"
-                              alt="Avatar placeholder"
-                              fill
-                              sizes="40px"
-                            />
-                          )}
+                          <Image
+                            src={profilePhotoSrc}
+                            alt={
+                              user?.name ? `${user.name} avatar` : "User avatar"
+                            }
+                            fill
+                            sizes="40px"
+                            unoptimized={avatarUnoptimized}
+                          />
                         </div>
                       </button>
                     </DropdownMenuTrigger>

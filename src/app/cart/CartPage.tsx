@@ -2,13 +2,13 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { setCartItemCount } from "@/features/cart/cartSlice";
-import type { MyCart } from "@/features/cart/cartApi";
+import { type MyCart } from "@/features/cart/cartApi";
 import { useMyCart } from "@/features/cart/cartHooks";
 import {
   Drawer,
@@ -17,11 +17,13 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
+import { useAuthedImageUrl } from "@/shared/lib/useAuthedImageUrl";
 
 const BACKEND_BASE = "https://library-backend-production-b9cf.up.railway.app";
 
 type NormalizedCartItem = {
   key: string;
+  itemId?: number;
   bookId?: number;
   title: string;
   authorName: string;
@@ -41,6 +43,26 @@ function asNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : undefined;
+}
+
+function asInteger(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Number.isInteger(value) ? value : Math.trunc(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  }
+  return undefined;
+}
+
+function asKeyPart(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return null;
 }
 
 function toAbsoluteAssetUrl(src?: string | null): string | null {
@@ -66,7 +88,23 @@ function normalizeCartItems(cart: MyCart | undefined): NormalizedCartItem[] {
         book && isRecord(book.category) ? book.category : undefined;
 
       const bookId = asNumber(book?.id) ?? asNumber(raw.bookId);
-      const key = String(raw.id ?? raw.cartItemId ?? bookId ?? index);
+      const rawId =
+        asKeyPart(raw.id) ??
+        asKeyPart(raw.cartItemId) ??
+        asKeyPart((raw as Record<string, unknown>).itemId) ??
+        asKeyPart((raw as Record<string, unknown>)._id);
+
+      const itemId =
+        asInteger(raw.id) ??
+        asInteger(raw.cartItemId) ??
+        asInteger((raw as Record<string, unknown>).itemId) ??
+        asInteger((raw as Record<string, unknown>)._id);
+
+      const key = rawId
+        ? `cart-item:${rawId}`
+        : bookId != null
+          ? `book:${bookId}:${index}`
+          : `item:${index}`;
 
       const title =
         asString(book?.title) ||
@@ -82,7 +120,15 @@ function normalizeCartItems(cart: MyCart | undefined): NormalizedCartItem[] {
       const coverImage =
         asString(book?.coverImage) || asString(raw.coverImage) || null;
 
-      return { key, bookId, title, authorName, categoryName, coverImage };
+      return {
+        key,
+        itemId,
+        bookId,
+        title,
+        authorName,
+        categoryName,
+        coverImage,
+      };
     })
     .filter((v): v is NormalizedCartItem => Boolean(v));
 }
@@ -199,11 +245,20 @@ export default function CartPage() {
   }, [router, token]);
 
   const profilePhoto = user?.profilePhoto ?? null;
-  const profilePhotoSrc = profilePhoto
+  const profilePhotoUrl = profilePhoto
     ? profilePhoto.startsWith("http")
       ? profilePhoto
       : `https://library-backend-production-b9cf.up.railway.app${profilePhoto.startsWith("/") ? "" : "/"}${profilePhoto}`
-    : "/Home/Ellipse3.svg";
+    : null;
+
+  const profilePhotoSrc = useAuthedImageUrl({
+    url: profilePhotoUrl,
+    token,
+    fallbackUrl: "/Home/Ellipse3.svg",
+  });
+
+  const avatarUnoptimized =
+    profilePhotoSrc.startsWith("data:") || profilePhotoSrc.startsWith("blob:");
 
   const myCartQuery = useMyCart({ enabled: Boolean(token) });
 
@@ -212,14 +267,39 @@ export default function CartPage() {
     [myCartQuery.data],
   );
 
-  const [drawerOpen, setDrawerOpen] = useState(true);
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(
+  const [selectedBookIdSet, setSelectedBookIdSet] = useState<Set<number>>(
     () => new Set(),
   );
 
-  const allSelected = items.length > 0 && selectedKeys.size === items.length;
-  // selectedKeys is still used for checkbox state, but total shown in the action bar
-  // follows the screenshot requirement (total books in cart).
+  const [borrowPending, setBorrowPending] = useState(false);
+  const borrowInFlightRef = useRef(false);
+
+  const selectableItems = useMemo(
+    () => items.filter((it) => typeof it.bookId === "number"),
+    [items],
+  );
+
+  const allSelected =
+    selectableItems.length > 0 &&
+    selectableItems.every((it) => selectedBookIdSet.has(it.bookId!));
+
+  const selectedCount = useMemo(() => {
+    if (selectedBookIdSet.size === 0) return 0;
+    let count = 0;
+    selectableItems.forEach((it) => {
+      if (selectedBookIdSet.has(it.bookId!)) count += 1;
+    });
+    return count;
+  }, [selectableItems, selectedBookIdSet]);
+
+  const selectedBookIds = useMemo(() => {
+    const ids: number[] = [];
+    selectableItems.forEach((it) => {
+      const bookId = it.bookId!;
+      if (selectedBookIdSet.has(bookId)) ids.push(bookId);
+    });
+    return Array.from(new Set(ids));
+  }, [selectableItems, selectedBookIdSet]);
 
   useEffect(() => {
     const cart = myCartQuery.data;
@@ -246,228 +326,275 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-neutral-50">
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DrawerContent
-          hideHandle
-          overlayClassName="bg-black/0"
-          className="mt-0 h-dvh max-h-dvh rounded-none border-x-0 border-b-0 px-0"
-        >
-          <DrawerHeader className="sr-only">
-            <DrawerTitle>My Cart</DrawerTitle>
-          </DrawerHeader>
+    <div className="min-h-dvh bg-neutral-50 px-xl">
+      <div className="mx-auto w-full max-w-96">
+        <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
+          <header className="flex items-center justify-between">
+            <button
+              type="button"
+              aria-label="Home"
+              onClick={() => router.push("/")}
+            >
+              <Image
+                src="/Login-Page/Logo.svg"
+                alt="Booky logo"
+                width={40}
+                height={40}
+                className="h-10 w-10"
+                priority
+              />
+            </button>
 
-          <div className="flex h-full flex-col bg-neutral-50">
-            <div className="mx-auto flex w-full max-w-96 flex-1 flex-col px-xl">
-              <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
-                <header className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    aria-label="Home"
-                    onClick={() => router.push("/")}
-                  >
-                    <Image
-                      src="/Login-Page/Logo.svg"
-                      alt="Booky logo"
-                      width={40}
-                      height={40}
-                      className="h-10 w-10"
-                      priority
-                    />
-                  </button>
+            <div className="flex items-center gap-3xl">
+              <button
+                type="button"
+                aria-label="Search"
+                onClick={() => router.push("/")}
+              >
+                <Image
+                  src="/Home/Search.svg"
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="h-6 w-6"
+                />
+              </button>
 
-                  <div className="flex items-center gap-3xl">
-                    <button
-                      type="button"
-                      aria-label="Search"
-                      onClick={() => router.push("/")}
-                    >
-                      <Image
-                        src="/Home/Search.svg"
-                        alt=""
-                        width={24}
-                        height={24}
-                        className="h-6 w-6"
-                      />
-                    </button>
-
-                    <button type="button" aria-label="Bag" className="relative">
-                      <Image
-                        src="/Home/Bag.svg"
-                        alt=""
-                        width={28}
-                        height={28}
-                        className="h-7 w-7"
-                      />
-                      {cartItemCount > 0 ? (
-                        <div className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-red px-1 text-[10px] font-bold text-base-white">
-                          {cartItemCount}
-                        </div>
-                      ) : null}
-                    </button>
-
-                    <button
-                      type="button"
-                      aria-label="Profile"
-                      onClick={() => router.push("/profile")}
-                    >
-                      <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
-                        <Image src={profilePhotoSrc} alt="" fill sizes="40px" />
-                      </div>
-                    </button>
+              <button type="button" aria-label="Bag" className="relative">
+                <Image
+                  src="/Home/Bag.svg"
+                  alt=""
+                  width={28}
+                  height={28}
+                  className="h-7 w-7"
+                />
+                {cartItemCount > 0 ? (
+                  <div className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-red px-1 text-[10px] font-bold text-base-white">
+                    {cartItemCount}
                   </div>
-                </header>
-              </div>
+                ) : null}
+              </button>
 
-              <div className="flex-1 overflow-auto pb-4xl">
-                <main className="pt-2xl">
-                  <h1 className="text-display-sm font-bold tracking-[-0.02em] text-neutral-950">
-                    My Cart
-                  </h1>
+              <button
+                type="button"
+                aria-label="Profile"
+                onClick={() => router.push("/profile")}
+              >
+                <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
+                  <Image
+                    src={profilePhotoSrc}
+                    alt=""
+                    fill
+                    sizes="40px"
+                    unoptimized={avatarUnoptimized}
+                  />
+                </div>
+              </button>
+            </div>
+          </header>
+        </div>
 
-                  <div className="mt-3xl">
-                    <div className="flex items-center gap-lg py-md">
-                      <Checkbox
-                        checked={allSelected}
-                        ariaLabel={allSelected ? "Unselect all" : "Select all"}
-                        onClick={() => {
-                          setSelectedKeys((prev) => {
-                            const next = new Set<string>();
-                            if (items.length === 0) return next;
-                            if (prev.size !== items.length) {
-                              items.forEach((it) => next.add(it.key));
-                            }
-                            return next;
-                          });
-                        }}
-                      />
-                      <span className="text-text-sm font-medium tracking-[-0.02em] text-neutral-950">
-                        Select All
-                      </span>
-                    </div>
+        <main className={cn("pt-2xl", selectedCount > 0 && "pb-11xl")}>
+          <h1 className="text-display-sm font-bold tracking-[-0.02em] text-neutral-950">
+            My Cart
+          </h1>
 
-                    <div className="h-px w-full bg-neutral-200" />
-
-                    {myCartQuery.isLoading ? (
-                      <div className="space-y-lg py-lg">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                          <div key={i} className="flex items-start gap-lg">
-                            <div className="h-5 w-5 rounded bg-neutral-100" />
-                            <div className="h-20 w-14 rounded-xl bg-neutral-100" />
-                            <div className="flex-1">
-                              <div className="h-6 w-24 rounded bg-neutral-100" />
-                              <div className="mt-sm h-5 w-44 rounded bg-neutral-100" />
-                              <div className="mt-sm h-4 w-28 rounded bg-neutral-100" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : myCartQuery.isError ? (
-                      <div className="py-4xl text-center text-text-sm font-medium tracking-[-0.02em] text-neutral-500">
-                        Unable to load cart. Please sign in again.
-                      </div>
-                    ) : items.length === 0 ? (
-                      <div className="py-4xl text-center text-text-sm font-medium tracking-[-0.02em] text-neutral-500">
-                        Your cart is empty.
-                      </div>
-                    ) : (
-                      <div>
-                        {items.map((item, idx) => {
-                          const checked = selectedKeys.has(item.key);
-                          const coverSrc = toAbsoluteAssetUrl(item.coverImage);
-                          const coverIsDataUrl = Boolean(
-                            coverSrc?.startsWith("data:"),
-                          );
-
-                          return (
-                            <div key={item.key}>
-                              <div className="flex items-start gap-lg py-lg">
-                                <Checkbox
-                                  checked={checked}
-                                  ariaLabel={
-                                    checked ? "Unselect item" : "Select item"
-                                  }
-                                  onClick={() => {
-                                    setSelectedKeys((prev) => {
-                                      const next = new Set(prev);
-                                      if (next.has(item.key))
-                                        next.delete(item.key);
-                                      else next.add(item.key);
-                                      return next;
-                                    });
-                                  }}
-                                />
-
-                                <div className="relative h-20 w-14 overflow-hidden rounded-xl bg-neutral-100">
-                                  {coverSrc ? (
-                                    <Image
-                                      src={coverSrc}
-                                      alt=""
-                                      fill
-                                      sizes="56px"
-                                      className="object-cover"
-                                      unoptimized={coverIsDataUrl}
-                                    />
-                                  ) : null}
-                                </div>
-
-                                <div className="min-w-0 flex-1">
-                                  <div className="inline-flex items-center rounded-full border border-neutral-300 bg-base-white px-md py-0.5 text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
-                                    {item.categoryName}
-                                  </div>
-                                  <div className="mt-sm truncate text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
-                                    {item.title}
-                                  </div>
-                                  <div className="mt-xs truncate text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
-                                    {item.authorName}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {idx < items.length - 1 ? (
-                                <div className="h-px w-full bg-neutral-200" />
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </main>
-              </div>
+          <div className="mt-3xl">
+            <div className="flex items-center gap-lg py-md">
+              <Checkbox
+                checked={allSelected}
+                ariaLabel={allSelected ? "Unselect all" : "Select all"}
+                onClick={() => {
+                  setSelectedBookIdSet((prev) => {
+                    const next = new Set<number>();
+                    if (selectableItems.length === 0) return next;
+                    if (prev.size !== selectableItems.length) {
+                      selectableItems.forEach((it) => next.add(it.bookId!));
+                    }
+                    return next;
+                  });
+                }}
+              />
+              <span className="text-text-sm font-medium tracking-[-0.02em] text-neutral-950">
+                Select All
+              </span>
             </div>
 
-            <div className="border-t border-neutral-200 bg-base-white">
-              <div className="mx-auto flex w-full max-w-96 items-center justify-between gap-xl px-xl py-xl pb-[calc(16px+env(safe-area-inset-bottom))]">
+            <div className="h-px w-full bg-neutral-200" />
+
+            {myCartQuery.isLoading ? (
+              <div className="space-y-lg py-lg">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-start gap-lg">
+                    <div className="h-5 w-5 rounded bg-neutral-100" />
+                    <div className="h-20 w-14 rounded-xl bg-neutral-100" />
+                    <div className="flex-1">
+                      <div className="h-6 w-24 rounded bg-neutral-100" />
+                      <div className="mt-sm h-5 w-44 rounded bg-neutral-100" />
+                      <div className="mt-sm h-4 w-28 rounded bg-neutral-100" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : myCartQuery.isError ? (
+              <div className="py-4xl text-center text-text-sm font-medium tracking-[-0.02em] text-neutral-500">
+                Unable to load cart. Please sign in again.
+              </div>
+            ) : items.length === 0 ? (
+              <div className="py-4xl text-center text-text-sm font-medium tracking-[-0.02em] text-neutral-500">
+                Your cart is empty.
+              </div>
+            ) : (
+              <div>
+                {items.map((item, idx) => {
+                  const bookId = item.bookId;
+                  const checked =
+                    typeof bookId === "number" && selectedBookIdSet.has(bookId);
+                  const coverSrc = toAbsoluteAssetUrl(item.coverImage);
+                  const coverIsDataUrl = Boolean(coverSrc?.startsWith("data:"));
+
+                  return (
+                    <div key={item.key}>
+                      <div className="flex items-start gap-lg py-lg">
+                        <Checkbox
+                          checked={checked}
+                          ariaLabel={checked ? "Unselect item" : "Select item"}
+                          onClick={() => {
+                            if (typeof bookId !== "number") return;
+                            setSelectedBookIdSet((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(bookId)) next.delete(bookId);
+                              else next.add(bookId);
+                              return next;
+                            });
+                          }}
+                        />
+
+                        <div className="relative h-20 w-14 overflow-hidden rounded-xl bg-neutral-100">
+                          {coverSrc ? (
+                            <Image
+                              src={coverSrc}
+                              alt=""
+                              fill
+                              sizes="56px"
+                              className="object-cover"
+                              unoptimized={coverIsDataUrl}
+                            />
+                          ) : null}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="inline-flex items-center rounded-full border border-neutral-300 bg-base-white px-md py-0.5 text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
+                            {item.categoryName}
+                          </div>
+                          <div className="mt-sm truncate text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
+                            {item.title}
+                          </div>
+                          <div className="mt-xs truncate text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
+                            {item.authorName}
+                          </div>
+                        </div>
+                      </div>
+
+                      {idx < items.length - 1 ? (
+                        <div className="h-px w-full bg-neutral-200" />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <Footer />
+        </main>
+      </div>
+
+      {selectedCount > 0 ? (
+        <Drawer
+          defaultOpen
+          direction="bottom"
+          dismissible={false}
+          modal={false}
+          shouldScaleBackground={false}
+        >
+          <DrawerContent
+            side="bottom"
+            hideHandle
+            hideOverlay
+            overlayClassName="bg-black/0"
+            className="px-0 mb-0 rounded-b-none border-x-0 border-t-0"
+          >
+            <DrawerHeader className="sr-only">
+              <DrawerTitle>Borrow Book</DrawerTitle>
+            </DrawerHeader>
+
+            <div className="border-b border-neutral-200 bg-base-white">
+              <div className="mx-auto flex w-full max-w-96 items-center justify-between gap-xl px-xl pb-xl pt-[calc(16px+env(safe-area-inset-top))]">
                 <div>
                   <div className="text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
                     Total Book
                   </div>
                   <div className="mt-xxs text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
-                    {items.length} Items
+                    {selectedCount} Items
                   </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    toast.info("Borrow Book belum tersedia.");
+                  disabled={borrowPending}
+                  onClick={async () => {
+                    if (borrowInFlightRef.current) return;
+
+                    if (selectedBookIds.length === 0) {
+                      toast.error("Pilih minimal 1 buku.");
+                      return;
+                    }
+
+                    borrowInFlightRef.current = true;
+                    setBorrowPending(true);
+                    try {
+                      // Store only selected items for Checkout.
+                      if (typeof window !== "undefined") {
+                        const selectedItems = items
+                          .filter(
+                            (it) =>
+                              typeof it.bookId === "number" &&
+                              selectedBookIdSet.has(it.bookId),
+                          )
+                          .map((it) => ({
+                            key: it.key,
+                            itemId: it.itemId ?? null,
+                            title: it.title,
+                            authorName: it.authorName,
+                            categoryName: it.categoryName,
+                            coverImage: it.coverImage ?? null,
+                          }));
+
+                        window.sessionStorage.setItem(
+                          "checkout:selectedItems",
+                          JSON.stringify(selectedItems),
+                        );
+                      }
+                      setSelectedBookIdSet(new Set());
+                      router.push("/checkout");
+                    } finally {
+                      setBorrowPending(false);
+                      borrowInFlightRef.current = false;
+                    }
                   }}
-                  className="h-10 min-w-[152px] rounded-full bg-primary-600 px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white"
+                  className={cn(
+                    "h-10 min-w-38 rounded-full bg-primary-600 px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white",
+                    borrowPending && "cursor-not-allowed opacity-60",
+                  )}
                 >
-                  Borrow Book
+                  {borrowPending ? "Processing..." : "Borrow Book"}
                 </button>
               </div>
             </div>
-          </div>
-        </DrawerContent>
-      </Drawer>
-
-      <div className="px-xl">
-        <div className="mx-auto w-full max-w-96">
-          <Footer />
-        </div>
-      </div>
+          </DrawerContent>
+        </Drawer>
+      ) : null}
     </div>
   );
 }

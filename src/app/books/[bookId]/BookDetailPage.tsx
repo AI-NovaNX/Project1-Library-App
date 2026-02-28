@@ -14,6 +14,7 @@ import { useBookReviewsInfinite } from "@/features/reviews/reviewsHooks";
 import { useAddToCart } from "@/features/cart/cartHooks";
 import { incrementCartItemCount } from "@/features/cart/cartSlice";
 import { getErrorMessage } from "@/shared/api/errors";
+import { useAuthedImageUrl } from "@/shared/lib/useAuthedImageUrl";
 import type { Book } from "@/shared/types/entities";
 import {
   Drawer,
@@ -76,13 +77,21 @@ export default function BookDetailPage() {
     enabled: Boolean(token),
   });
 
-  const profilePhotoSrc = useMemo(() => {
-    const profilePhoto = user?.profilePhoto ?? null;
-    if (!profilePhoto) return "/Home/Ellipse3.svg";
+  const profilePhoto = user?.profilePhoto ?? null;
+  const profilePhotoUrl = useMemo(() => {
+    if (!profilePhoto) return null;
     if (profilePhoto.startsWith("http")) return profilePhoto;
-
     return `https://library-backend-production-b9cf.up.railway.app${profilePhoto.startsWith("/") ? "" : "/"}${profilePhoto}`;
-  }, [user?.profilePhoto]);
+  }, [profilePhoto]);
+
+  const profilePhotoSrc = useAuthedImageUrl({
+    url: profilePhotoUrl,
+    token,
+    fallbackUrl: "/Home/Ellipse3.svg",
+  });
+
+  const avatarUnoptimized =
+    profilePhotoSrc.startsWith("data:") || profilePhotoSrc.startsWith("blob:");
 
   const book = bookQuery.data ?? null;
   const categoryName = book?.category?.name ?? "Category";
@@ -398,7 +407,13 @@ export default function BookDetailPage() {
                 onClick={() => router.push("/profile")}
               >
                 <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
-                  <Image src={profilePhotoSrc} alt="" fill sizes="40px" />
+                  <Image
+                    src={profilePhotoSrc}
+                    alt=""
+                    fill
+                    sizes="40px"
+                    unoptimized={avatarUnoptimized}
+                  />
                 </div>
               </button>
             </div>
