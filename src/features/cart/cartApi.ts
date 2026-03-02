@@ -15,3 +15,13 @@ export async function getMyCartApi(): Promise<MyCart> {
 export async function addCartItemApi(input: { bookId: number }): Promise<void> {
   await http.post("/api/cart/items", { bookId: input.bookId });
 }
+
+export async function removeCartItemApi(input: {
+  itemId: number;
+}): Promise<void> {
+  await http.delete(`/api/cart/items/${input.itemId}`);
+}
+
+export async function clearMyCartApi(): Promise<void> {
+  await http.delete("/api/cart");
+}

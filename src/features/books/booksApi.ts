@@ -43,7 +43,8 @@ export async function getBooksApi(
     params: {
       page: params.page,
       limit: params.limit,
-      search: params.search || undefined,
+      // Backend expects `q` for full-text search.
+      q: params.search || undefined,
       categoryId: params.categoryId || undefined,
     },
   });

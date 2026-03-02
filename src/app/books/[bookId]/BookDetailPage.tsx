@@ -6,13 +6,15 @@ import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import axios from "axios";
 
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { useBookById } from "@/features/books/booksHooks";
 import { getBooksApi, getRecommendedBooksApi } from "@/features/books/booksApi";
 import { useBookReviewsInfinite } from "@/features/reviews/reviewsHooks";
 import { useAddToCart } from "@/features/cart/cartHooks";
-import { incrementCartItemCount } from "@/features/cart/cartSlice";
+import { setCartItemCount } from "@/features/cart/cartSlice";
+import { getMyCartApi } from "@/features/cart/cartApi";
 import { getErrorMessage } from "@/shared/api/errors";
 import { useAuthedImageUrl } from "@/shared/lib/useAuthedImageUrl";
 import type { Book } from "@/shared/types/entities";
@@ -24,6 +26,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import { PageHeader } from "@/components/Header";
 
 function clampStars(star: number) {
   if (Number.isNaN(star)) return 0;
@@ -58,6 +61,7 @@ export default function BookDetailPage() {
 
   const [bookMenuOpen, setBookMenuOpen] = useState(false);
   const [relatedDrawerOpen, setRelatedDrawerOpen] = useState(false);
+  const [borrowPending, setBorrowPending] = useState(false);
 
   const token = useAppSelector((s) => s.auth.token);
   const user = useAppSelector((s) => s.auth.user);
@@ -94,7 +98,26 @@ export default function BookDetailPage() {
     profilePhotoSrc.startsWith("data:") || profilePhotoSrc.startsWith("blob:");
 
   const book = bookQuery.data ?? null;
-  const categoryName = book?.category?.name ?? "Category";
+  const availableCopies =
+    typeof book?.availableCopies === "number" ? book.availableCopies : null;
+  const isOutOfStock = availableCopies !== null && availableCopies <= 0;
+  const categoryName = (() => {
+    const byId: Record<number, string> = {
+      4: "Fiction",
+      10: "Non-fiction",
+      7: "Self-Improve",
+      9: "Finance",
+      11: "Science",
+      8: "Education",
+    };
+
+    if (book?.category?.name) return book.category.name;
+
+    const rawId = book?.category?.id ?? book?.categoryId;
+    const id = typeof rawId === "number" ? rawId : Number(rawId);
+    if (Number.isFinite(id) && byId[id]) return byId[id];
+    return "Category";
+  })();
   const title = book?.title ?? "-";
   const authorName = book?.author?.name ?? "-";
   const ratingText =
@@ -121,13 +144,104 @@ export default function BookDetailPage() {
   const handleAddToCart = async () => {
     if (!book?.id) return;
 
+    if (isOutOfStock) {
+      toast.error("No available copies to borrow");
+      return;
+    }
+
+    const bookIdValue = Number(book.id);
+    if (!Number.isFinite(bookIdValue)) {
+      toast.error("Book ID tidak valid.");
+      return;
+    }
+
     try {
-      await addToCartMutation.mutateAsync({ bookId: Number(book.id) });
-      dispatch(incrementCartItemCount(1));
+      await addToCartMutation.mutateAsync({ bookId: bookIdValue });
+
+      // Re-sync badge with server in case backend de-dupes items.
+      try {
+        const cart = await getMyCartApi();
+        const itemCount =
+          typeof cart.itemCount === "number"
+            ? cart.itemCount
+            : Array.isArray(cart.items)
+              ? cart.items.length
+              : 0;
+        dispatch(setCartItemCount(itemCount));
+      } catch {
+        // ignore - keep existing badge
+      }
+
       toast("Added to cart");
       setBookMenuOpen(false);
     } catch (err) {
+      // Backend uses 400 for business rules (e.g., already in cart).
+      if (axios.isAxiosError(err) && err.response?.status === 400) {
+        const msg = getErrorMessage(err);
+        if (/already\s+in\s+cart/i.test(msg)) {
+          toast.info("Sudah ada di cart.");
+          setBookMenuOpen(false);
+          return;
+        }
+      }
+
       toast(getErrorMessage(err));
+    }
+  };
+
+  const handleBorrowBook = async () => {
+    if (!book?.id) return;
+
+    if (isOutOfStock) {
+      toast.error("No available copies to borrow");
+      return;
+    }
+
+    const bookIdValue = Number(book.id);
+    if (!Number.isFinite(bookIdValue)) return;
+
+    type StoredCheckoutItem = {
+      key: string;
+      bookId?: number;
+      itemId?: number | string | null;
+      title?: string;
+      authorName?: string;
+      categoryName?: string;
+      coverImage?: string | null;
+    };
+
+    setBorrowPending(true);
+    try {
+      // Checkout should borrow exactly 1 book from Book Detail.
+      // This flow does NOT add the book into cart.
+      const nextSelected: StoredCheckoutItem[] = [
+        {
+          key: `book:${bookIdValue}`,
+          bookId: bookIdValue,
+          itemId: null,
+          title: book.title ?? "Book",
+          authorName: book.author?.name ?? "-",
+          categoryName:
+            (book.category && "name" in book.category
+              ? (book.category as { name?: string }).name
+              : undefined) ?? categoryName,
+          coverImage: book.coverImage ?? null,
+        },
+      ];
+
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(
+          "checkout:selectedItems",
+          JSON.stringify(nextSelected),
+        );
+      }
+
+      setBookMenuOpen(false);
+      router.push("/checkout");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setBorrowPending(false);
     }
   };
 
@@ -350,74 +464,16 @@ export default function BookDetailPage() {
     <div className="min-h-dvh bg-neutral-50 px-xl">
       <div className="mx-auto w-full max-w-96">
         <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
-          <header className="flex items-center justify-between">
-            <button
-              type="button"
-              aria-label="Home"
-              onClick={() => router.push("/")}
-            >
-              <Image
-                src="/Login-Page/Logo.svg"
-                alt="Booky logo"
-                width={40}
-                height={40}
-                className="h-10 w-10"
-                priority
-              />
-            </button>
-
-            <div className="flex items-center gap-3xl">
-              <button
-                type="button"
-                aria-label="Search"
-                onClick={() => router.push("/")}
-              >
-                <Image
-                  src="/Home/Search.svg"
-                  alt=""
-                  width={24}
-                  height={24}
-                  className="h-6 w-6"
-                />
-              </button>
-
-              <button
-                type="button"
-                aria-label="Bag"
-                className="relative"
-                onClick={() => router.push("/cart")}
-              >
-                <Image
-                  src="/Home/Bag.svg"
-                  alt=""
-                  width={28}
-                  height={28}
-                  className="h-7 w-7"
-                />
-                {cartItemCount > 0 ? (
-                  <div className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-red px-1 text-[10px] font-bold text-base-white">
-                    {cartItemCount}
-                  </div>
-                ) : null}
-              </button>
-
-              <button
-                type="button"
-                aria-label="Profile"
-                onClick={() => router.push("/profile")}
-              >
-                <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
-                  <Image
-                    src={profilePhotoSrc}
-                    alt=""
-                    fill
-                    sizes="40px"
-                    unoptimized={avatarUnoptimized}
-                  />
-                </div>
-              </button>
-            </div>
-          </header>
+          <PageHeader
+            onLogoClick={() => router.push("/")}
+            onSearchClick={() => router.push("/book-list?openSearch=1")}
+            onBagClick={() => router.push("/cart")}
+            cartItemCount={cartItemCount}
+            profilePhotoSrc={profilePhotoSrc}
+            profileAlt=""
+            avatarUnoptimized={avatarUnoptimized}
+            onProfileClick={() => router.push("/profile")}
+          />
         </div>
 
         <main className="pt-2xl">
@@ -430,7 +486,7 @@ export default function BookDetailPage() {
               Home
             </button>
             <span className="px-xs text-neutral-400">&gt;</span>
-            <span className="text-neutral-600">Category</span>
+            <span className="text-neutral-600">{categoryName}</span>
             <span className="px-xs text-neutral-400">&gt;</span>
             <span className="text-neutral-600">{title}</span>
           </div>
@@ -482,7 +538,9 @@ export default function BookDetailPage() {
                           <button
                             type="button"
                             onClick={handleAddToCart}
-                            disabled={addToCartMutation.isPending}
+                            disabled={
+                              addToCartMutation.isPending || isOutOfStock
+                            }
                             className="min-w-0 flex-1 rounded-full border border-neutral-300 bg-base-white py-sm text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 disabled:opacity-50"
                           >
                             {addToCartMutation.isPending
@@ -491,12 +549,19 @@ export default function BookDetailPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => toast("Borrow Book belum tersedia")}
-                            className="min-w-0 flex-1 rounded-full bg-primary-600 py-sm text-text-sm font-semibold tracking-[-0.02em] text-neutral-25"
+                            onClick={handleBorrowBook}
+                            disabled={borrowPending || isOutOfStock}
+                            className="min-w-0 flex-1 rounded-full bg-primary-600 py-sm text-text-sm font-semibold tracking-[-0.02em] text-neutral-25 disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Borrow Book
+                            {borrowPending ? "Loading..." : "Borrow Book"}
                           </button>
                         </div>
+
+                        {isOutOfStock ? (
+                          <div className="mt-sm text-center text-text-xs font-semibold tracking-[-0.02em] text-accent-red">
+                            Out of stock
+                          </div>
+                        ) : null}
                       </div>
                     </DrawerContent>
                   </Drawer>
@@ -781,9 +846,16 @@ export default function BookDetailPage() {
                     <DrawerClose asChild>
                       <button
                         type="button"
-                        className="text-text-sm font-semibold text-neutral-600"
+                        aria-label="Close"
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-base-white"
                       >
-                        Close
+                        <Image
+                          src="/Home/IconX.svg"
+                          alt=""
+                          width={16}
+                          height={16}
+                          className="h-4 w-4"
+                        />
                       </button>
                     </DrawerClose>
                   </div>

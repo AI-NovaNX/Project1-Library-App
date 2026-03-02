@@ -7,20 +7,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
-import { clearAuth } from "@/features/auth/authSlice";
-import {
-  useBooksInfinite,
-  useRecommendedBooksInfinite,
-} from "@/features/books/booksHooks";
+import { useAppSelector } from "@/app/store/hooks";
+import { useRecommendedBooksInfinite } from "@/features/books/booksHooks";
 import { usePopularAuthors } from "@/features/authors/authorsHooks";
-import { useDebounce } from "@/shared/lib/useDebounce";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { HomeHeader } from "@/components/Header";
 
 type CategoryCard = {
   label: string;
@@ -38,19 +28,10 @@ const CATEGORIES: CategoryCard[] = [
 
 export default function HomePage() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-  const [pressedCta, setPressedCta] = useState<"login" | "register" | null>(
-    null,
-  );
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const debouncedSearchValue = useDebounce(searchValue, 300);
-  const searchTerm = debouncedSearchValue.trim();
-  const isSearchEmpty = isSearchOpen && searchTerm.length === 0;
-  const isSearchMode = isSearchOpen && searchTerm.length > 0;
 
   const [recommendedCategoryId, setRecommendedCategoryId] = useState<
     number | undefined
@@ -68,15 +49,6 @@ export default function HomePage() {
     by: "rating",
     limit: 10,
     categoryId: recommendedCategoryId,
-  });
-
-  const searchedBooksQuery = useBooksInfinite({
-    search: isSearchMode ? searchTerm : undefined,
-    // Don't bind search results to the selected recommendation category.
-    // Otherwise search may look "random" (or miss existing books) when a
-    // category is active.
-    limit: 10,
-    enabled: isSearchMode,
   });
 
   const popularAuthorsQuery = usePopularAuthors({ limit: 4 });
@@ -138,70 +110,17 @@ export default function HomePage() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const displayedBooksPages = isSearchEmpty
-    ? undefined
-    : isSearchMode
-      ? searchedBooksQuery.data?.pages
-      : recommendedBooksQuery.data?.pages;
+  const displayedBooks =
+    recommendedBooksQuery.data?.pages.flatMap((page) => page.books) ?? [];
 
-  const displayedBooksRaw =
-    displayedBooksPages?.flatMap((page) => page.books) ?? [];
-
-  const displayedBooks = isSearchMode
-    ? displayedBooksRaw.filter((book) => {
-        const needle = searchTerm.toLowerCase();
-        const title = (book.title ?? "").toLowerCase();
-        const authorName = (book.author?.name ?? "").toLowerCase();
-
-        return title.includes(needle) || authorName.includes(needle);
-      })
-    : displayedBooksRaw;
-
-  const displayedBooksPageCount = displayedBooksPages?.length ?? 1;
-
-  const displayedHasNextPage = isSearchEmpty
-    ? false
-    : isSearchMode
-      ? searchedBooksQuery.hasNextPage
-      : recommendedBooksQuery.hasNextPage;
-
-  const displayedIsFetchingNextPage = isSearchEmpty
-    ? false
-    : isSearchMode
-      ? searchedBooksQuery.isFetchingNextPage
-      : recommendedBooksQuery.isFetchingNextPage;
+  const displayedHasNextPage = recommendedBooksQuery.hasNextPage;
+  const displayedIsFetchingNextPage = recommendedBooksQuery.isFetchingNextPage;
 
   const fetchDisplayedNextPage = () => {
-    if (isSearchEmpty) return;
-    if (isSearchMode) {
-      searchedBooksQuery.fetchNextPage();
-      return;
-    }
-
     recommendedBooksQuery.fetchNextPage();
   };
 
   const SHOW_BAG_BADGE = true;
-
-  useEffect(() => {
-    if (!isSearchMode) return;
-    if (!searchedBooksQuery.hasNextPage) return;
-    if (searchedBooksQuery.isFetching || searchedBooksQuery.isFetchingNextPage)
-      return;
-
-    // Backend may not strictly filter by `search`, so keep fetching pages
-    // until we have at least 1 client-side match or pagination ends.
-    if (displayedBooks.length === 0) {
-      searchedBooksQuery.fetchNextPage();
-    }
-  }, [
-    displayedBooks.length,
-    isSearchMode,
-    searchedBooksQuery,
-    searchedBooksQuery.hasNextPage,
-    searchedBooksQuery.isFetching,
-    searchedBooksQuery.isFetchingNextPage,
-  ]);
 
   const token = useAppSelector((s) => s.auth.token);
   const user = useAppSelector((s) => s.auth.user);
@@ -229,255 +148,19 @@ export default function HomePage() {
     <div className="min-h-dvh bg-neutral-50 px-xl">
       <div className="mx-auto w-full max-w-96">
         <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
-          <header className="flex items-center justify-between">
-            <div
-              className={`${isSearchOpen ? "hidden md:flex" : "flex"} w-full items-center justify-between`}
-            >
-              <Image
-                src="/Login-Page/Logo.svg"
-                alt="Booky logo"
-                width={40}
-                height={40}
-                className="h-10 w-10"
-                priority
-              />
-
-              <div className="flex items-center gap-3xl">
-                <button
-                  type="button"
-                  aria-label="Search"
-                  onClick={() => {
-                    if (typeof window === "undefined") return;
-                    if (window.innerWidth >= 768) return;
-
-                    setIsMenuOpen(false);
-                    setPressedCta(null);
-                    setIsSearchOpen(true);
-                  }}
-                >
-                  <Image
-                    src="/Home/Search.svg"
-                    alt=""
-                    width={24}
-                    height={24}
-                    className="h-6 w-6"
-                  />
-                </button>
-
-                <button
-                  type="button"
-                  aria-label="Bag"
-                  className="relative"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    setPressedCta(null);
-                    setIsSearchOpen(false);
-                    router.push("/cart");
-                  }}
-                >
-                  <Image
-                    src="/Home/Bag.svg"
-                    alt=""
-                    width={28}
-                    height={28}
-                    className="h-7 w-7"
-                  />
-                  {SHOW_BAG_BADGE && cartItemCount > 0 ? (
-                    <div className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-red px-1 text-[10px] font-bold text-base-white">
-                      {cartItemCount}
-                    </div>
-                  ) : null}
-                </button>
-
-                {isLoggedIn ? (
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <button type="button" aria-label="Profile menu">
-                        <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
-                          <Image
-                            src={profilePhotoSrc}
-                            alt={
-                              user?.name ? `${user.name} avatar` : "User avatar"
-                            }
-                            fill
-                            sizes="40px"
-                            unoptimized={avatarUnoptimized}
-                          />
-                        </div>
-                      </button>
-                    </DropdownMenuTrigger>
-
-                    <DropdownMenuContent
-                      align="end"
-                      sideOffset={12}
-                      className="w-[calc(100vw-2rem)] max-w-96 rounded-2xl border border-neutral-200 bg-base-white p-xl shadow-md"
-                    >
-                      <div className="flex flex-col gap-xl">
-                        <DropdownMenuItem
-                          onSelect={() => router.push("/profile")}
-                          className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 focus:bg-transparent focus:text-neutral-950 data-highlighted:bg-transparent data-highlighted:text-neutral-950"
-                        >
-                          Profile
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => {
-                            // Not implemented yet; keep UX consistent without navigation.
-                          }}
-                          className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 focus:bg-transparent focus:text-neutral-950 data-highlighted:bg-transparent data-highlighted:text-neutral-950"
-                        >
-                          Borrowed List
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => {
-                            // Not implemented yet; keep UX consistent without navigation.
-                          }}
-                          className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 focus:bg-transparent focus:text-neutral-950 data-highlighted:bg-transparent data-highlighted:text-neutral-950"
-                        >
-                          Reviews
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => {
-                            dispatch(clearAuth());
-                            router.push("/");
-                          }}
-                          className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-accent-red focus:bg-transparent focus:text-accent-red data-highlighted:bg-transparent data-highlighted:text-accent-red"
-                        >
-                          Logout
-                        </DropdownMenuItem>
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <DropdownMenu
-                    modal={false}
-                    open={isMenuOpen}
-                    onOpenChange={(open) => {
-                      setIsMenuOpen(open);
-                      if (!open) setPressedCta(null);
-                    }}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={isMenuOpen ? "Close menu" : "Menu"}
-                        aria-expanded={isMenuOpen}
-                        className="md:hidden"
-                      >
-                        <Image
-                          src={
-                            isMenuOpen ? "/Home/IconX.svg" : "/Home/Menu.svg"
-                          }
-                          alt=""
-                          width={isMenuOpen ? 16 : 24}
-                          height={isMenuOpen ? 16 : 24}
-                          className={isMenuOpen ? "h-3.5 w-3.5" : "h-6 w-6"}
-                        />
-                      </button>
-                    </DropdownMenuTrigger>
-
-                    <DropdownMenuContent
-                      align="end"
-                      sideOffset={0}
-                      className="hidden"
-                    >
-                      <div className="hidden" />
-                    </DropdownMenuContent>
-
-                    {isMenuOpen ? (
-                      <div className="fixed bottom-0 left-0 right-0 top-15 z-30 flex w-screen flex-col md:hidden">
-                        <div className="shrink-0 min-h-90.25 bg-neutral-50 px-xl py-lg">
-                          <div className="flex w-full gap-3.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPressedCta("login");
-                                requestAnimationFrame(() => {
-                                  router.push("/login");
-                                });
-                              }}
-                              className={`min-w-0 flex-1 basis-0 rounded-full border border-neutral-300 bg-base-white py-sm font-sans text-text-md font-bold tracking-[-0.02em] text-neutral-950 transition-colors hover:border-primary-600 hover:bg-primary-600 hover:text-neutral-25 focus:border-primary-600 focus:bg-primary-600 focus:text-neutral-25 active:border-primary-600 active:bg-primary-600 active:text-neutral-25 ${pressedCta === "login" ? "border-primary-600 bg-primary-600 text-neutral-25" : ""}`}
-                            >
-                              Login
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPressedCta("register");
-                                requestAnimationFrame(() => {
-                                  router.push("/register");
-                                });
-                              }}
-                              className={`min-w-0 flex-1 basis-0 rounded-full border border-neutral-300 bg-base-white py-sm font-sans text-text-md font-bold tracking-[-0.02em] text-neutral-950 transition-colors hover:border-primary-600 hover:bg-primary-600 hover:text-neutral-25 focus:border-primary-600 focus:bg-primary-600 focus:text-neutral-25 active:border-primary-600 active:bg-primary-600 active:text-neutral-25 ${pressedCta === "register" ? "border-primary-600 bg-primary-600 text-neutral-25" : ""}`}
-                            >
-                              Register
-                            </button>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          aria-label="Close menu overlay"
-                          onClick={() => {
-                            setPressedCta(null);
-                            setIsMenuOpen(false);
-                          }}
-                          className="w-full flex-1 bg-transparent"
-                        />
-                      </div>
-                    ) : null}
-                  </DropdownMenu>
-                )}
-              </div>
-            </div>
-
-            {isSearchOpen ? (
-              <div className="flex w-full items-center gap-lg md:hidden">
-                <Image
-                  src="/Login-Page/Logo.svg"
-                  alt="Booky logo"
-                  width={40}
-                  height={40}
-                  className="h-10 w-10"
-                  priority
-                />
-
-                <div className="relative flex-1">
-                  <Image
-                    src="/Home/SearchMute.svg"
-                    alt=""
-                    width={16}
-                    height={16}
-                    className="pointer-events-none absolute left-lg top-1/2 h-4 w-4 -translate-y-1/2"
-                  />
-                  <input
-                    ref={searchInputRef}
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    placeholder="Search book"
-                    className="h-10 w-full rounded-full border border-neutral-300 bg-base-white pl-4xl pr-xl text-text-sm font-medium text-neutral-950 placeholder:text-neutral-400 focus:outline-none"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  aria-label="Close search"
-                  onClick={() => {
-                    setIsSearchOpen(false);
-                    setSearchValue("");
-                  }}
-                  className="shrink-0"
-                >
-                  <Image
-                    src="/Home/IconX.svg"
-                    alt=""
-                    width={16}
-                    height={16}
-                    className="h-4 w-4"
-                  />
-                </button>
-              </div>
-            ) : null}
-          </header>
+          <HomeHeader
+            isSearchOpen={isSearchOpen}
+            setIsSearchOpen={setIsSearchOpen}
+            searchValue={searchValue}
+            setSearchValue={setSearchValue}
+            searchInputRef={searchInputRef}
+            cartItemCount={cartItemCount}
+            showBagBadge={SHOW_BAG_BADGE}
+            isLoggedIn={isLoggedIn}
+            profilePhotoSrc={profilePhotoSrc}
+            profileAlt={user?.name ? `${user.name} avatar` : "User avatar"}
+            avatarUnoptimized={avatarUnoptimized}
+          />
         </div>
 
         <main className="pt-4xl">
@@ -690,114 +373,67 @@ export default function HomePage() {
               Recommendation
             </h2>
 
-            {isSearchEmpty ? (
-              <div className="mt-lg rounded-2xl border border-neutral-100 bg-base-white p-4xl">
-                <div className="flex flex-col items-center justify-center gap-md py-4xl text-center">
-                  <Image
-                    src="/Home/SearchMute.svg"
-                    alt=""
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                  <div className="text-text-sm font-semibold tracking-[-0.02em] text-neutral-950">
-                    Search book
-                  </div>
-                  <div className="text-text-xs text-neutral-600">
-                    Type a keyword to search.
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <>
-                {isSearchMode &&
-                searchedBooksQuery.isSuccess &&
-                displayedBooks.length === 0 &&
-                !searchedBooksQuery.hasNextPage ? (
-                  <div className="mt-lg rounded-2xl border border-neutral-100 bg-base-white p-4xl">
-                    <div className="flex flex-col items-center justify-center gap-md py-4xl text-center">
+            <div className="mt-lg grid grid-cols-2 gap-lg">
+              {displayedBooks.map((book) => (
+                <button
+                  key={book.id}
+                  type="button"
+                  onClick={() => router.push(`/books/${book.id}`)}
+                  aria-label={`View details for ${book.title ?? "book"}`}
+                  className="overflow-hidden rounded-2xl border border-neutral-100 bg-base-white shadow-sm"
+                >
+                  <div className="relative aspect-3/4 w-full bg-neutral-100">
+                    {book.coverImage ? (
                       <Image
-                        src="/Home/SearchMute.svg"
-                        alt=""
-                        width={20}
-                        height={20}
-                        className="h-5 w-5"
+                        src={book.coverImage}
+                        alt={book.title}
+                        fill
+                        sizes="(max-width: 430px) 50vw, 200px"
+                        className="object-cover"
+                        unoptimized={book.coverImage.startsWith("data:")}
                       />
-                      <div className="text-text-sm font-semibold tracking-[-0.02em] text-neutral-950">
-                        No results
-                      </div>
-                      <div className="text-text-xs text-neutral-600">
-                        Try a different keyword.
-                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="p-md">
+                    <div className="text-text-sm font-semibold tracking-[-0.02em] text-neutral-950">
+                      {book.title ?? "-"}
+                    </div>
+                    <div className="mt-2xs text-text-xs text-neutral-500">
+                      {book.author?.name ?? "-"}
+                    </div>
+
+                    <div className="mt-xs flex items-center gap-2xs">
+                      <Image
+                        src="/Home/Star.svg"
+                        alt=""
+                        width={16}
+                        height={16}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-text-xs font-semibold text-neutral-950">
+                        {typeof book.rating === "number"
+                          ? book.rating.toFixed(1)
+                          : "-"}
+                      </span>
                     </div>
                   </div>
-                ) : null}
+                </button>
+              ))}
+            </div>
 
-                <div className="mt-lg grid grid-cols-2 gap-lg">
-                  {displayedBooks
-                    .slice(0, 10 * displayedBooksPageCount)
-                    .map((book) => (
-                      <button
-                        key={book.id}
-                        type="button"
-                        onClick={() => router.push(`/books/${book.id}`)}
-                        aria-label={`View details for ${book.title ?? "book"}`}
-                        className="overflow-hidden rounded-2xl border border-neutral-100 bg-base-white shadow-sm"
-                      >
-                        <div className="relative aspect-3/4 w-full bg-neutral-100">
-                          {book.coverImage ? (
-                            <Image
-                              src={book.coverImage}
-                              alt={book.title}
-                              fill
-                              sizes="(max-width: 430px) 50vw, 200px"
-                              className="object-cover"
-                              unoptimized={book.coverImage.startsWith("data:")}
-                            />
-                          ) : null}
-                        </div>
-
-                        <div className="p-md">
-                          <div className="text-text-sm font-semibold tracking-[-0.02em] text-neutral-950">
-                            {book.title ?? "-"}
-                          </div>
-                          <div className="mt-2xs text-text-xs text-neutral-500">
-                            {book.author?.name ?? "-"}
-                          </div>
-
-                          <div className="mt-xs flex items-center gap-2xs">
-                            <Image
-                              src="/Home/Star.svg"
-                              alt=""
-                              width={16}
-                              height={16}
-                              className="h-4 w-4"
-                            />
-                            <span className="text-text-xs font-semibold text-neutral-950">
-                              {typeof book.rating === "number"
-                                ? book.rating.toFixed(1)
-                                : "-"}
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                </div>
-
-                {displayedHasNextPage ? (
-                  <div className="mt-3xl flex justify-center">
-                    <button
-                      type="button"
-                      onClick={fetchDisplayedNextPage}
-                      disabled={displayedIsFetchingNextPage}
-                      className="h-auto rounded-full border border-neutral-300 bg-base-white px-4xl py-sm text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 disabled:opacity-50"
-                    >
-                      {displayedIsFetchingNextPage ? "Loading..." : "Load More"}
-                    </button>
-                  </div>
-                ) : null}
-              </>
-            )}
+            {displayedHasNextPage ? (
+              <div className="mt-3xl flex justify-center">
+                <button
+                  type="button"
+                  onClick={fetchDisplayedNextPage}
+                  disabled={displayedIsFetchingNextPage}
+                  className="h-auto rounded-full border border-neutral-300 bg-base-white px-4xl py-sm text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 disabled:opacity-50"
+                >
+                  {displayedIsFetchingNextPage ? "Loading..." : "Load More"}
+                </button>
+              </div>
+            ) : null}
           </section>
 
           <section className="mt-4xl">
@@ -824,9 +460,11 @@ export default function HomePage() {
                       : "/Home/Ellipse3.svg";
 
                   return (
-                    <div
+                    <button
                       key={author.id}
-                      className="flex items-center gap-lg rounded-2xl bg-base-white p-lg shadow-sm"
+                      type="button"
+                      onClick={() => router.push(`/authors/${author.id}`)}
+                      className="flex w-full items-center gap-lg rounded-2xl bg-base-white p-lg text-left shadow-sm"
                     >
                       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-neutral-200">
                         <Image
@@ -857,7 +495,7 @@ export default function HomePage() {
                           </span>
                         </div>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>

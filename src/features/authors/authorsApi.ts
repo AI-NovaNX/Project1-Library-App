@@ -1,4 +1,5 @@
-import type { ApiEnvelope } from "@/shared/types/api";
+import type { ApiEnvelope, Pagination } from "@/shared/types/api";
+import type { Book } from "@/shared/types/entities";
 import { http } from "@/shared/api/http";
 
 export type PopularAuthor = {
@@ -18,6 +19,22 @@ export type GetPopularAuthorsResponse = {
   authors: PopularAuthor[];
 };
 
+export type AuthorBooksAuthor = {
+  id: string | number;
+  name: string;
+  bookCount?: number;
+  photo?: string | null;
+  avatar?: string | null;
+  image?: string | null;
+  profilePhoto?: string | null;
+};
+
+export type GetAuthorBooksResponse = {
+  author: AuthorBooksAuthor;
+  books: Book[];
+  pagination: Pagination;
+};
+
 export async function getPopularAuthorsApi(params?: {
   limit?: number;
 }): Promise<GetPopularAuthorsResponse> {
@@ -26,6 +43,24 @@ export async function getPopularAuthorsApi(params?: {
     {
       params: {
         limit: params?.limit,
+      },
+    },
+  );
+
+  return res.data.data;
+}
+
+export async function getAuthorBooksApi(params: {
+  id: string | number;
+  page: number;
+  limit: number;
+}): Promise<GetAuthorBooksResponse> {
+  const res = await http.get<ApiEnvelope<GetAuthorBooksResponse>>(
+    `/api/authors/${params.id}/books`,
+    {
+      params: {
+        page: params.page,
+        limit: params.limit,
       },
     },
   );

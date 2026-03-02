@@ -3,21 +3,25 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { meApiWithToken } from "@/features/auth/authApi";
 import { setCartItemCount } from "@/features/cart/cartSlice";
+import { getMyCartApi } from "@/features/cart/cartApi";
 import { getErrorMessage } from "@/shared/api/errors";
 import { http } from "@/shared/api/http";
 import { useAuthedImageUrl } from "@/shared/lib/useAuthedImageUrl";
+import { PageHeader } from "@/components/Header";
+import { removeCartItemApi } from "@/features/cart/cartApi";
 
 const BACKEND_BASE = "https://library-backend-production-b9cf.up.railway.app";
 
 type NormalizedCartItem = {
   key: string;
   itemId?: number;
+  bookId?: number;
   title: string;
   authorName: string;
   categoryName: string;
@@ -30,6 +34,78 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function asInteger(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Number.isInteger(value) ? value : Math.trunc(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  }
+  return undefined;
+}
+
+function extractCartItemIds(cartItems: unknown[]): number[] {
+  const ids: number[] = [];
+  for (const raw of cartItems) {
+    if (!isRecord(raw)) continue;
+    const id =
+      asInteger(raw.id) ??
+      asInteger(raw.cartItemId) ??
+      asInteger((raw as Record<string, unknown>).itemId) ??
+      asInteger((raw as Record<string, unknown>)._id);
+    if (typeof id === "number" && Number.isFinite(id)) ids.push(id);
+  }
+  return ids;
+}
+
+type BorrowFromCartEnvelope = {
+  success: boolean;
+  message?: string;
+  data?: {
+    loans?: unknown[];
+  };
+};
+
+function extractCartItemIndex(cartItems: unknown[]): {
+  itemIds: Set<number>;
+  bookIdToItemId: Map<number, number>;
+  itemIdToBookId: Map<number, number>;
+} {
+  const itemIds = new Set<number>();
+  const bookIdToItemId = new Map<number, number>();
+  const itemIdToBookId = new Map<number, number>();
+
+  for (const raw of cartItems) {
+    if (!isRecord(raw)) continue;
+
+    const itemId =
+      asInteger(raw.id) ??
+      asInteger(raw.cartItemId) ??
+      asInteger((raw as Record<string, unknown>).itemId) ??
+      asInteger((raw as Record<string, unknown>)._id);
+
+    if (typeof itemId === "number" && Number.isFinite(itemId)) {
+      itemIds.add(itemId);
+    } else {
+      continue;
+    }
+
+    const book = isRecord(raw.book) ? raw.book : undefined;
+    const bookId =
+      (typeof book?.id === "number" && Number.isFinite(book.id)
+        ? book.id
+        : undefined) ?? asInteger(raw.bookId);
+
+    if (typeof bookId === "number" && Number.isFinite(bookId)) {
+      if (!bookIdToItemId.has(bookId)) bookIdToItemId.set(bookId, itemId);
+      if (!itemIdToBookId.has(itemId)) itemIdToBookId.set(itemId, bookId);
+    }
+  }
+
+  return { itemIds, bookIdToItemId, itemIdToBookId };
 }
 
 function toAbsoluteAssetUrl(src?: string | null): string | null {
@@ -156,6 +232,7 @@ function Footer() {
 export default function CheckoutPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
 
   const token = useAppSelector((s) => s.auth.token);
   const user = useAppSelector((s) => s.auth.user);
@@ -222,6 +299,12 @@ export default function CheckoutPage() {
               : typeof v.itemId === "string" && /^\d+$/.test(v.itemId.trim())
                 ? Number(v.itemId.trim())
                 : undefined,
+          bookId:
+            typeof v.bookId === "number"
+              ? v.bookId
+              : typeof v.bookId === "string" && /^\d+$/.test(v.bookId.trim())
+                ? Number(v.bookId.trim())
+                : undefined,
           title: asString(v.title) || "Book",
           authorName: asString(v.authorName) || "-",
           categoryName: asString(v.categoryName) || "-",
@@ -249,6 +332,12 @@ export default function CheckoutPage() {
       .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
   }, [items]);
 
+  const selectedBookIds = useMemo(() => {
+    return items
+      .map((it) => it.bookId)
+      .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  }, [items]);
+
   const isBorrowDateValid = useMemo(() => {
     try {
       parseISODate(borrowDate);
@@ -261,7 +350,7 @@ export default function CheckoutPage() {
   const canConfirm =
     !confirmPending &&
     itemsLoaded &&
-    selectedItemIds.length > 0 &&
+    (selectedItemIds.length > 0 || selectedBookIds.length > 0) &&
     isBorrowDateValid &&
     agreeDueDate &&
     agreePolicy;
@@ -298,74 +387,16 @@ export default function CheckoutPage() {
     <div className="min-h-dvh bg-neutral-50 px-xl">
       <div className="mx-auto w-full max-w-96">
         <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
-          <header className="flex items-center justify-between">
-            <button
-              type="button"
-              aria-label="Home"
-              onClick={() => router.push("/")}
-            >
-              <Image
-                src="/Login-Page/Logo.svg"
-                alt="Booky logo"
-                width={40}
-                height={40}
-                className="h-10 w-10"
-                priority
-              />
-            </button>
-
-            <div className="flex items-center gap-3xl">
-              <button
-                type="button"
-                aria-label="Search"
-                onClick={() => router.push("/")}
-              >
-                <Image
-                  src="/Home/Search.svg"
-                  alt=""
-                  width={24}
-                  height={24}
-                  className="h-6 w-6"
-                />
-              </button>
-
-              <button
-                type="button"
-                aria-label="Bag"
-                className="relative"
-                onClick={() => router.push("/cart")}
-              >
-                <Image
-                  src="/Home/Bag.svg"
-                  alt=""
-                  width={28}
-                  height={28}
-                  className="h-7 w-7"
-                />
-                {cartItemCount > 0 ? (
-                  <div className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-red px-1 text-[10px] font-bold text-base-white">
-                    {cartItemCount}
-                  </div>
-                ) : null}
-              </button>
-
-              <button
-                type="button"
-                aria-label="Profile"
-                onClick={() => router.push("/profile")}
-              >
-                <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
-                  <Image
-                    src={profilePhotoSrc}
-                    alt=""
-                    fill
-                    sizes="40px"
-                    unoptimized={avatarUnoptimized}
-                  />
-                </div>
-              </button>
-            </div>
-          </header>
+          <PageHeader
+            onLogoClick={() => router.push("/")}
+            onSearchClick={() => router.push("/book-list?openSearch=1")}
+            onBagClick={() => router.push("/cart")}
+            cartItemCount={cartItemCount}
+            profilePhotoSrc={profilePhotoSrc}
+            profileAlt=""
+            avatarUnoptimized={avatarUnoptimized}
+            onProfileClick={() => router.push("/profile")}
+          />
         </div>
 
         <main className="pt-2xl">
@@ -576,33 +607,324 @@ export default function CheckoutPage() {
                     return;
                   }
 
-                  if (selectedItemIds.length === 0) {
-                    toast.error(
-                      "Cart item tidak ditemukan. Silakan kembali ke Cart.",
-                    );
+                  if (selectedItemIds.length === 0 && selectedBookIds.length === 0) {
+                    toast.error("Buku tidak ditemukan. Silakan kembali.");
                     return;
                   }
 
                   setConfirmPending(true);
                   try {
-                    await http.post(
-                      "/api/loans/from-cart",
-                      {
-                        itemIds: selectedItemIds,
-                        days: durationDays,
-                        borrowDate,
-                      },
-                      {
-                        headers: token
-                          ? { Authorization: `Bearer ${token}` }
-                          : undefined,
-                      },
+                    const requestOptions = {
+                      headers: token
+                        ? { Authorization: `Bearer ${token}` }
+                        : undefined,
+                    };
+
+                    // Direct-borrow flow (from Book Detail): do not require cart itemIds.
+                    if (selectedItemIds.length === 0 && selectedBookIds.length > 0) {
+                      const results = await Promise.allSettled(
+                        selectedBookIds.map((bookId) =>
+                          http.post(
+                            "/api/loans",
+                            { bookId, days: durationDays },
+                            requestOptions,
+                          ),
+                        ),
+                      );
+
+                      const successCount = results.filter(
+                        (r) => r.status === "fulfilled",
+                      ).length;
+
+                      if (successCount === 0) {
+                        const firstFailure = results.find(
+                          (r) => r.status === "rejected",
+                        ) as PromiseRejectedResult | undefined;
+                        toast.error(
+                          firstFailure
+                            ? getErrorMessage(firstFailure.reason)
+                            : "Borrow gagal.",
+                        );
+                        return;
+                      }
+
+                      if (typeof window !== "undefined") {
+                        try {
+                          const titles = items
+                            .map((it) => it.title)
+                            .filter(
+                              (t): t is string =>
+                                typeof t === "string" && t.trim().length > 0,
+                            );
+                          window.sessionStorage.setItem(
+                            "borrowed-list:expectedBookIds",
+                            JSON.stringify(selectedBookIds),
+                          );
+                          window.sessionStorage.setItem(
+                            "borrowed-list:expectedTitles",
+                            JSON.stringify(titles),
+                          );
+                          window.sessionStorage.setItem(
+                            "borrowed-list:triggeredAt",
+                            String(Date.now()),
+                          );
+                        } catch {
+                          // ignore
+                        }
+
+                        window.sessionStorage.removeItem(
+                          "checkout:selectedItems",
+                        );
+                      }
+
+                      await queryClient.invalidateQueries({
+                        queryKey: ["meLoans"],
+                      });
+
+                      router.push(
+                        `/success?returnBy=${encodeURIComponent(returnDateLabel)}`,
+                      );
+                      return;
+                    }
+
+                    // Source of truth for borrow: cart item ids that exist in the backend cart right now.
+                    // This avoids cases where sessionStorage contains missing/stale itemIds.
+                    let effectiveItemIds = selectedItemIds;
+                    let itemIdToBookId: Map<number, number> | null = null;
+                    try {
+                      const cart = await getMyCartApi();
+                      const rawItems = Array.isArray(cart.items)
+                        ? cart.items
+                        : [];
+                      const {
+                        itemIds: cartItemIdSet,
+                        bookIdToItemId,
+                        itemIdToBookId: nextItemIdToBookId,
+                      } = extractCartItemIndex(rawItems);
+                      itemIdToBookId = nextItemIdToBookId;
+
+                      const allExistInCart =
+                        effectiveItemIds.length > 0 &&
+                        effectiveItemIds.every((id) => cartItemIdSet.has(id));
+
+                      if (!allExistInCart && selectedBookIds.length > 0) {
+                        const mapped: number[] = [];
+                        for (const bookId of selectedBookIds) {
+                          const mappedItemId = bookIdToItemId.get(bookId);
+                          if (
+                            typeof mappedItemId === "number" &&
+                            Number.isFinite(mappedItemId)
+                          ) {
+                            mapped.push(mappedItemId);
+                          }
+                        }
+                        const uniqueMapped = Array.from(new Set(mapped));
+                        if (uniqueMapped.length > 0)
+                          effectiveItemIds = uniqueMapped;
+                      }
+                    } catch {
+                      // ignore; fall back to selectedItemIds
+                    }
+
+                    effectiveItemIds = Array.from(
+                      new Set(
+                        effectiveItemIds
+                          .map((v) =>
+                            Number.isFinite(v) ? Math.trunc(v) : NaN,
+                          )
+                          .filter(
+                            (v): v is number =>
+                              typeof v === "number" && Number.isFinite(v),
+                          ),
+                      ),
                     );
 
+                    if (effectiveItemIds.length === 0) {
+                      toast.error(
+                        "Cart item tidak ditemukan. Silakan kembali ke Cart lalu pilih ulang bukunya.",
+                      );
+                      return;
+                    }
+
+                    const body = {
+                      itemIds: effectiveItemIds,
+                      days: durationDays,
+                      borrowDate,
+                    };
+
+                    const res = await http.post<BorrowFromCartEnvelope>(
+                      "/api/loans/from-cart",
+                      body,
+                      requestOptions,
+                    );
+                    const borrowRes: BorrowFromCartEnvelope | null =
+                      res.data ?? null;
+                    const lastMessage = borrowRes?.message;
+
+                    const loans = Array.isArray(borrowRes?.data?.loans)
+                      ? borrowRes?.data?.loans
+                      : [];
+                    const noBooksMessage =
+                      typeof borrowRes?.message === "string" &&
+                      borrowRes.message
+                        .toLowerCase()
+                        .includes("no books borrowed");
+
+                    let borrowedViaFallback = false;
+
+                    // If backend explicitly says no books were borrowed and it didn't return any loans,
+                    // try fallback: borrow directly via POST /api/loans using bookId.
+                    if (loans.length === 0 && noBooksMessage) {
+                      let fallbackBookIds = selectedBookIds;
+                      if (fallbackBookIds.length === 0 && itemIdToBookId) {
+                        const mapped: number[] = [];
+                        for (const itemId of effectiveItemIds) {
+                          const bookId = itemIdToBookId.get(itemId);
+                          if (
+                            typeof bookId === "number" &&
+                            Number.isFinite(bookId)
+                          ) {
+                            mapped.push(bookId);
+                          }
+                        }
+                        fallbackBookIds = Array.from(new Set(mapped));
+                      }
+
+                      if (fallbackBookIds.length === 0) {
+                        toast.error(lastMessage ?? "No books borrowed.");
+                        return;
+                      }
+
+                      const results = await Promise.allSettled(
+                        fallbackBookIds.map((bookId) =>
+                          http.post(
+                            "/api/loans",
+                            { bookId, days: durationDays },
+                            requestOptions,
+                          ),
+                        ),
+                      );
+
+                      const successCount = results.filter(
+                        (r) => r.status === "fulfilled",
+                      ).length;
+
+                      if (successCount === 0) {
+                        const firstFailure = results.find(
+                          (r) => r.status === "rejected",
+                        ) as PromiseRejectedResult | undefined;
+                        toast.error(
+                          firstFailure
+                            ? getErrorMessage(firstFailure.reason)
+                            : (lastMessage ?? "No books borrowed."),
+                        );
+                        return;
+                      }
+
+                      // Keep cart in sync after successful fallback borrow.
+                      await Promise.allSettled(
+                        effectiveItemIds.map((itemId) =>
+                          removeCartItemApi({ itemId }),
+                        ),
+                      );
+                      borrowedViaFallback = true;
+                    }
+
+                    // If backend didn't return loan objects, do a quick sanity check:
+                    // consider it successful only if the selected cart items are no longer in the cart.
+                    let consumedByBackend = false;
+                    if (borrowedViaFallback) {
+                      consumedByBackend = true;
+                    } else {
+                      try {
+                        const cart = await getMyCartApi();
+                        const rawItems = Array.isArray(cart.items)
+                          ? cart.items
+                          : [];
+                        const remainingIds = new Set(
+                          extractCartItemIds(rawItems),
+                        );
+                        consumedByBackend = effectiveItemIds.every(
+                          (id) => !remainingIds.has(id),
+                        );
+                      } catch {
+                        // ignore
+                      }
+                    }
+
+                    if (!borrowedViaFallback && loans.length === 0 && !consumedByBackend) {
+                      toast.error(
+                        lastMessage ??
+                          "Borrow berhasil dipanggil, tapi tidak ada loan yang dibuat. Periksa payload itemIds/cartItemIds.",
+                      );
+                      return;
+                    }
+
+                    // Some backends don't automatically consume/remove cart items
+                    // when borrowing from cart. Make it explicit to keep cart in sync.
+                    if (!consumedByBackend) {
+                      await Promise.allSettled(
+                        effectiveItemIds.map((itemId) =>
+                          removeCartItemApi({ itemId }),
+                        ),
+                      );
+                    }
+
                     if (typeof window !== "undefined") {
+                      try {
+                        const bookIds = items
+                          .map((it) => it.bookId)
+                          .filter(
+                            (id): id is number =>
+                              typeof id === "number" && Number.isFinite(id),
+                          );
+                        const titles = items
+                          .map((it) => it.title)
+                          .filter(
+                            (t): t is string =>
+                              typeof t === "string" && t.trim().length > 0,
+                          );
+                        window.sessionStorage.setItem(
+                          "borrowed-list:expectedBookIds",
+                          JSON.stringify(bookIds),
+                        );
+                        window.sessionStorage.setItem(
+                          "borrowed-list:expectedTitles",
+                          JSON.stringify(titles),
+                        );
+                        window.sessionStorage.setItem(
+                          "borrowed-list:triggeredAt",
+                          String(Date.now()),
+                        );
+                      } catch {
+                        // ignore
+                      }
+
                       window.sessionStorage.removeItem(
                         "checkout:selectedItems",
                       );
+                    }
+
+                    // Ensure Borrowed List reflects the new loan without requiring a hard refresh.
+                    await queryClient.invalidateQueries({
+                      queryKey: ["meLoans"],
+                    });
+
+                    // Re-sync cart badge after borrowing (backend usually consumes cart items).
+                    await queryClient.invalidateQueries({
+                      queryKey: ["myCart"],
+                    });
+                    try {
+                      const cart = await getMyCartApi();
+                      const nextCount =
+                        typeof cart.itemCount === "number"
+                          ? cart.itemCount
+                          : Array.isArray(cart.items)
+                            ? cart.items.length
+                            : 0;
+                      dispatch(setCartItemCount(nextCount));
+                    } catch {
+                      // ignore
                     }
 
                     router.push(

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -8,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAppSelector } from "@/app/store/hooks";
 import { meApiWithToken } from "@/features/auth/authApi";
 import { useAuthedImageUrl } from "@/shared/lib/useAuthedImageUrl";
+import { PageHeader } from "@/components/Header";
 
 const BACKEND_BASE = "https://library-backend-production-b9cf.up.railway.app";
 
@@ -71,74 +71,16 @@ export default function SuccessPageClient({ returnBy }: { returnBy: string }) {
     <div className="min-h-dvh bg-neutral-50 px-xl">
       <div className="mx-auto w-full max-w-96">
         <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
-          <header className="flex items-center justify-between">
-            <button
-              type="button"
-              aria-label="Home"
-              onClick={() => router.push("/")}
-            >
-              <Image
-                src="/Login-Page/Logo.svg"
-                alt="Booky logo"
-                width={40}
-                height={40}
-                className="h-10 w-10"
-                priority
-              />
-            </button>
-
-            <div className="flex items-center gap-3xl">
-              <button
-                type="button"
-                aria-label="Search"
-                onClick={() => router.push("/")}
-              >
-                <Image
-                  src="/Home/Search.svg"
-                  alt=""
-                  width={24}
-                  height={24}
-                  className="h-6 w-6"
-                />
-              </button>
-
-              <button
-                type="button"
-                aria-label="Bag"
-                className="relative"
-                onClick={() => router.push("/cart")}
-              >
-                <Image
-                  src="/Home/Bag.svg"
-                  alt=""
-                  width={28}
-                  height={28}
-                  className="h-7 w-7"
-                />
-                {cartItemCount > 0 ? (
-                  <div className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-red px-1 text-[10px] font-bold text-base-white">
-                    {cartItemCount}
-                  </div>
-                ) : null}
-              </button>
-
-              <button
-                type="button"
-                aria-label="Profile"
-                onClick={() => router.push("/profile")}
-              >
-                <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
-                  <Image
-                    src={profilePhotoSrc}
-                    alt={meUser?.name ? `${meUser.name} avatar` : "User avatar"}
-                    fill
-                    sizes="40px"
-                    unoptimized={avatarUnoptimized}
-                  />
-                </div>
-              </button>
-            </div>
-          </header>
+          <PageHeader
+            onLogoClick={() => router.push("/")}
+            onSearchClick={() => router.push("/book-list?openSearch=1")}
+            onBagClick={() => router.push("/cart")}
+            cartItemCount={cartItemCount}
+            profilePhotoSrc={profilePhotoSrc}
+            profileAlt={meUser?.name ? `${meUser.name} avatar` : "User avatar"}
+            avatarUnoptimized={avatarUnoptimized}
+            onProfileClick={() => router.push("/profile")}
+          />
         </div>
 
         <main className="pt-7xl">
@@ -183,8 +125,7 @@ export default function SuccessPageClient({ returnBy }: { returnBy: string }) {
               <button
                 type="button"
                 onClick={() => {
-                  // Borrowed List page is not implemented yet in this project.
-                  router.push("/home");
+                  router.push("/borrowed-list");
                 }}
                 className="mt-4xl h-11 w-full rounded-full bg-primary-600 px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white"
               >

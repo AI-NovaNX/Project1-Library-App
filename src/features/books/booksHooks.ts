@@ -48,8 +48,14 @@ export function useBooksInfinite(params: {
       });
     },
     getNextPageParam: (lastPage) => {
-      const next = lastPage.pagination.page + 1;
-      return next <= lastPage.pagination.totalPages ? next : undefined;
+      const currentPage = Number(lastPage.pagination?.page ?? 1);
+      const totalPages = Number(lastPage.pagination?.totalPages ?? currentPage);
+      if (!Number.isFinite(currentPage) || !Number.isFinite(totalPages)) {
+        return undefined;
+      }
+
+      const next = currentPage + 1;
+      return next <= totalPages ? next : undefined;
     },
   });
 }
@@ -82,8 +88,14 @@ export function useRecommendedBooksInfinite(params: {
       });
     },
     getNextPageParam: (lastPage) => {
-      const next = lastPage.pagination.page + 1;
-      return next <= lastPage.pagination.totalPages ? next : undefined;
+      const currentPage = Number(lastPage.pagination?.page ?? 1);
+      const totalPages = Number(lastPage.pagination?.totalPages ?? currentPage);
+      if (!Number.isFinite(currentPage) || !Number.isFinite(totalPages)) {
+        return undefined;
+      }
+
+      const next = currentPage + 1;
+      return next <= totalPages ? next : undefined;
     },
   });
 }

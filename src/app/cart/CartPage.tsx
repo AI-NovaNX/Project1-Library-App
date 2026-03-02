@@ -3,21 +3,23 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { setCartItemCount } from "@/features/cart/cartSlice";
 import { type MyCart } from "@/features/cart/cartApi";
-import { useMyCart } from "@/features/cart/cartHooks";
+import { useMyCart, useRemoveCartItem } from "@/features/cart/cartHooks";
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { PageHeader } from "@/components/Header";
 import { cn } from "@/lib/utils";
 import { useAuthedImageUrl } from "@/shared/lib/useAuthedImageUrl";
+import { getErrorMessage } from "@/shared/api/errors";
 
 const BACKEND_BASE = "https://library-backend-production-b9cf.up.railway.app";
 
@@ -261,6 +263,7 @@ export default function CartPage() {
     profilePhotoSrc.startsWith("data:") || profilePhotoSrc.startsWith("blob:");
 
   const myCartQuery = useMyCart({ enabled: Boolean(token) });
+  const removeCartItemMutation = useRemoveCartItem();
 
   const items = useMemo(
     () => normalizeCartItems(myCartQuery.data),
@@ -271,8 +274,25 @@ export default function CartPage() {
     () => new Set(),
   );
 
+  const [editMode, setEditMode] = useState(false);
+  const [actionPending, setActionPending] = useState(false);
+  const actionInFlightRef = useRef(false);
+
   const [borrowPending, setBorrowPending] = useState(false);
   const borrowInFlightRef = useRef(false);
+
+  const selectedItemIds = useMemo(() => {
+    if (selectedBookIdSet.size === 0) return [] as number[];
+    const ids: number[] = [];
+    items.forEach((it) => {
+      if (typeof it.bookId !== "number") return;
+      if (!selectedBookIdSet.has(it.bookId)) return;
+      if (typeof it.itemId === "number" && Number.isFinite(it.itemId)) {
+        ids.push(it.itemId);
+      }
+    });
+    return Array.from(new Set(ids));
+  }, [items, selectedBookIdSet]);
 
   const selectableItems = useMemo(
     () => items.filter((it) => typeof it.bookId === "number"),
@@ -314,6 +334,39 @@ export default function CartPage() {
     dispatch(setCartItemCount(count));
   }, [dispatch, myCartQuery.data]);
 
+  const handleDeleteSelected = async () => {
+    if (actionInFlightRef.current) return;
+    if (selectedItemIds.length === 0) {
+      toast.error("Cart item tidak ditemukan. Silakan refresh cart.");
+      return;
+    }
+
+    actionInFlightRef.current = true;
+    setActionPending(true);
+    try {
+      const results = await Promise.allSettled(
+        selectedItemIds.map((itemId) =>
+          removeCartItemMutation.mutateAsync({ itemId }),
+        ),
+      );
+
+      const failed = results.filter((r) => r.status === "rejected");
+      if (failed.length > 0) {
+        const firstErr =
+          failed[0].status === "rejected" ? failed[0].reason : null;
+        toast.error(getErrorMessage(firstErr));
+      } else {
+        toast.success("Item berhasil dihapus dari cart.");
+      }
+
+      setSelectedBookIdSet(new Set());
+      await myCartQuery.refetch();
+    } finally {
+      setActionPending(false);
+      actionInFlightRef.current = false;
+    }
+  };
+
   if (!token) {
     return (
       <div className="min-h-dvh bg-neutral-50 px-xl">
@@ -329,75 +382,41 @@ export default function CartPage() {
     <div className="min-h-dvh bg-neutral-50 px-xl">
       <div className="mx-auto w-full max-w-96">
         <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
-          <header className="flex items-center justify-between">
-            <button
-              type="button"
-              aria-label="Home"
-              onClick={() => router.push("/")}
-            >
-              <Image
-                src="/Login-Page/Logo.svg"
-                alt="Booky logo"
-                width={40}
-                height={40}
-                className="h-10 w-10"
-                priority
-              />
-            </button>
-
-            <div className="flex items-center gap-3xl">
-              <button
-                type="button"
-                aria-label="Search"
-                onClick={() => router.push("/")}
-              >
-                <Image
-                  src="/Home/Search.svg"
-                  alt=""
-                  width={24}
-                  height={24}
-                  className="h-6 w-6"
-                />
-              </button>
-
-              <button type="button" aria-label="Bag" className="relative">
-                <Image
-                  src="/Home/Bag.svg"
-                  alt=""
-                  width={28}
-                  height={28}
-                  className="h-7 w-7"
-                />
-                {cartItemCount > 0 ? (
-                  <div className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-red px-1 text-[10px] font-bold text-base-white">
-                    {cartItemCount}
-                  </div>
-                ) : null}
-              </button>
-
-              <button
-                type="button"
-                aria-label="Profile"
-                onClick={() => router.push("/profile")}
-              >
-                <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
-                  <Image
-                    src={profilePhotoSrc}
-                    alt=""
-                    fill
-                    sizes="40px"
-                    unoptimized={avatarUnoptimized}
-                  />
-                </div>
-              </button>
-            </div>
-          </header>
+          <PageHeader
+            onLogoClick={() => router.push("/")}
+            onSearchClick={() => router.push("/book-list?openSearch=1")}
+            cartItemCount={cartItemCount}
+            profilePhotoSrc={profilePhotoSrc}
+            profileAlt=""
+            avatarUnoptimized={avatarUnoptimized}
+            onProfileClick={() => router.push("/profile")}
+          />
         </div>
 
         <main className={cn("pt-2xl", selectedCount > 0 && "pb-11xl")}>
-          <h1 className="text-display-sm font-bold tracking-[-0.02em] text-neutral-950">
-            My Cart
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-display-sm font-bold tracking-[-0.02em] text-neutral-950">
+              My Cart
+            </h1>
+
+            <button
+              type="button"
+              aria-label={editMode ? "Done" : "Delete item from my cart"}
+              onClick={() => {
+                setEditMode((prev) => !prev);
+                setSelectedBookIdSet(new Set());
+              }}
+              className="inline-flex h-10 w-10 items-center justify-center text-neutral-950"
+            >
+              {editMode ? (
+                <span className="text-text-sm font-semibold tracking-[-0.02em]">
+                  Done
+                </span>
+              ) : (
+                <Trash2Icon className="h-5 w-5" />
+              )}
+            </button>
+          </div>
 
           <div className="mt-3xl">
             <div className="flex items-center gap-lg py-md">
@@ -542,8 +561,13 @@ export default function CartPage() {
 
                 <button
                   type="button"
-                  disabled={borrowPending}
+                  disabled={editMode ? actionPending : borrowPending}
                   onClick={async () => {
+                    if (editMode) {
+                      await handleDeleteSelected();
+                      return;
+                    }
+
                     if (borrowInFlightRef.current) return;
 
                     if (selectedBookIds.length === 0) {
@@ -565,6 +589,7 @@ export default function CartPage() {
                           .map((it) => ({
                             key: it.key,
                             itemId: it.itemId ?? null,
+                            bookId: it.bookId,
                             title: it.title,
                             authorName: it.authorName,
                             categoryName: it.categoryName,
@@ -584,11 +609,19 @@ export default function CartPage() {
                     }
                   }}
                   className={cn(
-                    "h-10 min-w-38 rounded-full bg-primary-600 px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white",
-                    borrowPending && "cursor-not-allowed opacity-60",
+                    "h-10 min-w-38 rounded-full px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white",
+                    editMode ? "bg-accent-red" : "bg-primary-600",
+                    (editMode ? actionPending : borrowPending) &&
+                      "cursor-not-allowed opacity-60",
                   )}
                 >
-                  {borrowPending ? "Processing..." : "Borrow Book"}
+                  {editMode
+                    ? actionPending
+                      ? "Deleting..."
+                      : "Delete"
+                    : borrowPending
+                      ? "Processing..."
+                      : "Borrow Book"}
                 </button>
               </div>
             </div>
