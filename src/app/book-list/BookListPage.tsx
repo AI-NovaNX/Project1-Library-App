@@ -183,6 +183,115 @@ function DesktopFooter() {
   );
 }
 
+type DesktopGridBook = {
+  id: number | string;
+  title?: string | null;
+  rating?: unknown;
+  coverImage?: string | null;
+  author?: { name?: string | null } | null;
+};
+
+function DesktopBooksGrid(props: {
+  books: DesktopGridBook[];
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  fetchNextPage: () => Promise<unknown>;
+  onBookClick: (id: number | string) => void;
+}) {
+  const [visibleCount, setVisibleCount] = useState(8);
+
+  const booksToRender = props.books.slice(0, visibleCount);
+  const hasMoreThanEight = props.books.length > 8 || props.hasNextPage;
+  const canLoadMore =
+    hasMoreThanEight &&
+    (visibleCount < props.books.length || props.hasNextPage);
+
+  return (
+    <>
+      <div className="grid grid-cols-4 gap-xl">
+        {booksToRender.map((book) => {
+          const cover =
+            toAbsoluteAssetUrl(book.coverImage) ?? "/Home/image4.svg";
+          const coverUnoptimized =
+            cover.startsWith("data:") || cover.startsWith("blob:");
+
+          return (
+            <button
+              key={String(book.id)}
+              type="button"
+              onClick={() => props.onBookClick(book.id)}
+              className="overflow-hidden rounded-2xl bg-base-white text-left shadow-sm"
+            >
+              <div className="relative aspect-3/4 w-full bg-neutral-100">
+                <Image
+                  src={cover}
+                  alt={book.title ?? "Book cover"}
+                  fill
+                  sizes="(max-width: 1024px) 20vw, 220px"
+                  className="object-cover"
+                  unoptimized={coverUnoptimized}
+                />
+              </div>
+
+              <div className="p-lg">
+                <div className="truncate text-text-sm font-semibold tracking-[-0.02em] text-neutral-950">
+                  {book.title ?? "Book Name"}
+                </div>
+                <div className="mt-2xs truncate text-text-xs font-medium text-neutral-600">
+                  {book.author?.name ?? "Author name"}
+                </div>
+
+                <div className="mt-xs flex items-center gap-2xs">
+                  <Image
+                    src="/Home/Star.svg"
+                    alt=""
+                    width={16}
+                    height={16}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-text-xs font-semibold text-neutral-950">
+                    {typeof book.rating === "number"
+                      ? book.rating.toFixed(1)
+                      : "-"}
+                  </span>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {canLoadMore ? (
+        <div className="mt-3xl flex justify-center">
+          <button
+            type="button"
+            disabled={props.isFetchingNextPage}
+            onClick={async () => {
+              const nextCount = visibleCount + 8;
+              setVisibleCount(nextCount);
+
+              if (
+                props.hasNextPage &&
+                props.books.length < nextCount &&
+                !props.isFetchingNextPage
+              ) {
+                try {
+                  await props.fetchNextPage();
+                } catch {
+                  // ignore
+                }
+              }
+            }}
+            className="h-auto rounded-full border border-neutral-300 bg-base-white px-4xl py-sm text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 disabled:opacity-50"
+          >
+            {props.isFetchingNextPage ? "Loading..." : "Load more"}
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export default function BookListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -246,12 +355,6 @@ export default function BookListPage() {
     return () => window.clearTimeout(t);
   }, [drawerScopeKey]);
 
-  const [desktopVisibleCount, setDesktopVisibleCount] = useState(8);
-
-  useEffect(() => {
-    setDesktopVisibleCount(8);
-  }, [drawerScopeKey]);
-
   const token = useAppSelector((s) => s.auth.token);
   const user = useAppSelector((s) => s.auth.user);
   const cartItemCount = useAppSelector((s) => s.cart.itemCount);
@@ -309,12 +412,6 @@ export default function BookListPage() {
   );
 
   const desktopAllBooks = [...firstBooks, ...extraBooks];
-  const desktopBooksToRender = desktopAllBooks.slice(0, desktopVisibleCount);
-  const desktopHasMoreThanEight =
-    desktopAllBooks.length > 8 || booksQuery.hasNextPage;
-  const desktopCanLoadMore =
-    desktopHasMoreThanEight &&
-    (desktopVisibleCount < desktopAllBooks.length || booksQuery.hasNextPage);
 
   const ensureDrawerHasNextPage = () => {
     if (drawerInitialFetchRef.current.key !== drawerScopeKey) {
@@ -809,95 +906,20 @@ export default function BookListPage() {
                       />
                     ))}
                   </div>
-                ) : firstBooks.length === 0 ? (
+                ) : desktopAllBooks.length === 0 ? (
                   <div className="rounded-2xl border border-neutral-100 bg-base-white p-4xl text-center text-text-sm font-semibold tracking-[-0.02em] text-neutral-500">
                     No books found.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-4 gap-xl">
-                    {desktopBooksToRender.map((book) => {
-                      const cover =
-                        toAbsoluteAssetUrl(book.coverImage) ??
-                        "/Home/image4.svg";
-                      const coverUnoptimized =
-                        cover.startsWith("data:") || cover.startsWith("blob:");
-
-                      return (
-                        <button
-                          key={String(book.id)}
-                          type="button"
-                          onClick={() => router.push(`/books/${book.id}`)}
-                          className="overflow-hidden rounded-2xl bg-base-white text-left shadow-sm"
-                        >
-                          <div className="relative aspect-3/4 w-full bg-neutral-100">
-                            <Image
-                              src={cover}
-                              alt={book.title ?? "Book cover"}
-                              fill
-                              sizes="(max-width: 1024px) 20vw, 220px"
-                              className="object-cover"
-                              unoptimized={coverUnoptimized}
-                            />
-                          </div>
-
-                          <div className="p-lg">
-                            <div className="truncate text-text-sm font-semibold tracking-[-0.02em] text-neutral-950">
-                              {book.title ?? "Book Name"}
-                            </div>
-                            <div className="mt-2xs truncate text-text-xs font-medium text-neutral-600">
-                              {book.author?.name ?? "Author name"}
-                            </div>
-
-                            <div className="mt-xs flex items-center gap-2xs">
-                              <Image
-                                src="/Home/Star.svg"
-                                alt=""
-                                width={16}
-                                height={16}
-                                className="h-4 w-4"
-                              />
-                              <span className="text-text-xs font-semibold text-neutral-950">
-                                {typeof book.rating === "number"
-                                  ? book.rating.toFixed(1)
-                                  : "-"}
-                              </span>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <DesktopBooksGrid
+                    key={drawerScopeKey}
+                    books={desktopAllBooks}
+                    hasNextPage={Boolean(booksQuery.hasNextPage)}
+                    isFetchingNextPage={Boolean(booksQuery.isFetchingNextPage)}
+                    fetchNextPage={() => booksQuery.fetchNextPage()}
+                    onBookClick={(id) => router.push(`/books/${id}`)}
+                  />
                 )}
-
-                {desktopCanLoadMore ? (
-                  <div className="mt-3xl flex justify-center">
-                    <button
-                      type="button"
-                      disabled={booksQuery.isFetchingNextPage}
-                      onClick={async () => {
-                        const nextCount = desktopVisibleCount + 8;
-                        setDesktopVisibleCount(nextCount);
-
-                        if (
-                          booksQuery.hasNextPage &&
-                          desktopAllBooks.length < nextCount &&
-                          !booksQuery.isFetchingNextPage
-                        ) {
-                          try {
-                            await booksQuery.fetchNextPage();
-                          } catch {
-                            // ignore
-                          }
-                        }
-                      }}
-                      className="h-auto rounded-full border border-neutral-300 bg-base-white px-4xl py-sm text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 disabled:opacity-50"
-                    >
-                      {booksQuery.isFetchingNextPage
-                        ? "Loading..."
-                        : "Load more"}
-                    </button>
-                  </div>
-                ) : null}
               </section>
             </div>
 

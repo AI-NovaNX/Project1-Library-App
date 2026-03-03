@@ -16,7 +16,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { PageHeader } from "@/components/Header";
+import { DesktopHeader, PageHeader } from "@/components/Header";
 import { cn } from "@/lib/utils";
 import { useAuthedImageUrl } from "@/shared/lib/useAuthedImageUrl";
 import { getErrorMessage } from "@/shared/api/errors";
@@ -162,24 +162,24 @@ function Checkbox({
   );
 }
 
-function Footer() {
+function Footer({ className }: { className?: string }) {
   return (
-    <footer className="mt-7xl px-xl pb-6xl">
-      <div className="flex flex-col items-center">
+    <footer className={cn("mt-7xl px-xl pb-6xl md:px-0", className)}>
+      <div className="flex flex-col items-center text-center">
         <div className="flex items-center gap-md">
           <Image
             src="/Login-Page/Logo.svg"
             alt="Booky logo"
             width={40}
             height={40}
-            className="h-10 w-10"
+            className="h-10 w-10 md:h-8.25 md:w-8.25"
           />
           <span className="text-display-xs font-bold tracking-[-0.02em] text-neutral-950">
             Booky
           </span>
         </div>
 
-        <p className="mt-xl max-w-80 text-center text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
+        <p className="mx-auto mt-xl w-full max-w-80 text-text-xs font-medium tracking-[-0.02em] text-neutral-500 md:mt-lg md:max-w-160 md:text-text-sm md:font-medium md:leading-6 md:text-neutral-600">
           Discover inspiring stories & timeless knowledge, ready to borrow
           anytime. Explore online or visit our nearest library branch.
         </p>
@@ -188,15 +188,18 @@ function Footer() {
           Follow on Social Media
         </div>
 
-        <div className="mt-xl flex items-center justify-center gap-lg">
+        <div className="mt-xl flex items-center justify-center gap-lg md:gap-md">
           <button type="button" aria-label="Facebook">
             <Image
               src="/Home/Facebook.svg"
               alt=""
               width={40}
               height={40}
-              className="h-10 w-10"
+              className="h-10 w-10 md:hidden"
             />
+            <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white">
+              <Image src="/Home/Facebook.svg" alt="" width={16} height={16} />
+            </div>
           </button>
 
           <button type="button" aria-label="Instagram">
@@ -205,8 +208,11 @@ function Footer() {
               alt=""
               width={40}
               height={40}
-              className="h-10 w-10"
+              className="h-10 w-10 md:hidden"
             />
+            <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white">
+              <Image src="/Home/Instagram.svg" alt="" width={16} height={16} />
+            </div>
           </button>
 
           <button type="button" aria-label="LinkedIn">
@@ -215,8 +221,11 @@ function Footer() {
               alt=""
               width={40}
               height={40}
-              className="h-10 w-10"
+              className="h-10 w-10 md:hidden"
             />
+            <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white">
+              <Image src="/Home/Linkedln.svg" alt="" width={16} height={16} />
+            </div>
           </button>
 
           <button type="button" aria-label="TikTok">
@@ -225,8 +234,11 @@ function Footer() {
               alt=""
               width={40}
               height={40}
-              className="h-10 w-10"
+              className="h-10 w-10 md:hidden"
             />
+            <div className="hidden md:flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white">
+              <Image src="/Home/TIKTOK.svg" alt="" width={16} height={16} />
+            </div>
           </button>
         </div>
       </div>
@@ -238,6 +250,8 @@ export default function CartPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
 
+  const [isMdUp, setIsMdUp] = useState<boolean | null>(null);
+
   const token = useAppSelector((s) => s.auth.token);
   const user = useAppSelector((s) => s.auth.user);
   const cartItemCount = useAppSelector((s) => s.cart.itemCount);
@@ -245,6 +259,15 @@ export default function CartPage() {
   useEffect(() => {
     if (!token) router.replace("/login");
   }, [router, token]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsMdUp(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   const profilePhoto = user?.profilePhoto ?? null;
   const profilePhotoUrl = profilePhoto
@@ -280,6 +303,8 @@ export default function CartPage() {
 
   const [borrowPending, setBorrowPending] = useState(false);
   const borrowInFlightRef = useRef(false);
+
+  const [desktopSearchValue, setDesktopSearchValue] = useState("");
 
   const selectedItemIds = useMemo(() => {
     if (selectedBookIdSet.size === 0) return [] as number[];
@@ -367,6 +392,47 @@ export default function CartPage() {
     }
   };
 
+  const handleBorrowSelected = async () => {
+    if (borrowInFlightRef.current) return;
+
+    if (selectedBookIds.length === 0) {
+      toast.error("Pilih minimal 1 buku.");
+      return;
+    }
+
+    borrowInFlightRef.current = true;
+    setBorrowPending(true);
+    try {
+      // Store only selected items for Checkout.
+      if (typeof window !== "undefined") {
+        const selectedItems = items
+          .filter(
+            (it) =>
+              typeof it.bookId === "number" && selectedBookIdSet.has(it.bookId),
+          )
+          .map((it) => ({
+            key: it.key,
+            itemId: it.itemId ?? null,
+            bookId: it.bookId,
+            title: it.title,
+            authorName: it.authorName,
+            categoryName: it.categoryName,
+            coverImage: it.coverImage ?? null,
+          }));
+
+        window.sessionStorage.setItem(
+          "checkout:selectedItems",
+          JSON.stringify(selectedItems),
+        );
+      }
+      setSelectedBookIdSet(new Set());
+      router.push("/checkout");
+    } finally {
+      setBorrowPending(false);
+      borrowInFlightRef.current = false;
+    }
+  };
+
   if (!token) {
     return (
       <div className="min-h-dvh bg-neutral-50 px-xl">
@@ -379,255 +445,445 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-neutral-50 px-xl">
-      <div className="mx-auto w-full max-w-96">
-        <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
-          <PageHeader
-            onLogoClick={() => router.push("/")}
-            onSearchClick={() => router.push("/book-list?openSearch=1")}
-            cartItemCount={cartItemCount}
-            profilePhotoSrc={profilePhotoSrc}
-            profileAlt=""
-            avatarUnoptimized={avatarUnoptimized}
-            onProfileClick={() => router.push("/profile")}
-          />
+    <div className="min-h-dvh bg-neutral-50">
+      {/* Mobile layout (default) */}
+      <div className="md:hidden px-xl">
+        <div className="mx-auto w-full max-w-96">
+          <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
+            <PageHeader
+              onLogoClick={() => router.push("/")}
+              onSearchClick={() => router.push("/book-list?openSearch=1")}
+              cartItemCount={cartItemCount}
+              profilePhotoSrc={profilePhotoSrc}
+              profileAlt=""
+              avatarUnoptimized={avatarUnoptimized}
+              onProfileClick={() => router.push("/profile")}
+            />
+          </div>
+
+          <main className={cn("pt-2xl", selectedCount > 0 && "pb-11xl")}>
+            <div className="flex items-center justify-between">
+              <h1 className="text-display-sm font-bold tracking-[-0.02em] text-neutral-950">
+                My Cart
+              </h1>
+
+              <button
+                type="button"
+                aria-label={editMode ? "Done" : "Delete item from my cart"}
+                onClick={() => {
+                  setEditMode((prev) => !prev);
+                  setSelectedBookIdSet(new Set());
+                }}
+                className="inline-flex h-10 w-10 items-center justify-center text-neutral-950"
+              >
+                {editMode ? (
+                  <span className="text-text-sm font-semibold tracking-[-0.02em]">
+                    Done
+                  </span>
+                ) : (
+                  <Trash2Icon className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+
+            <div className="mt-3xl">
+              <div className="flex items-center gap-lg py-md">
+                <Checkbox
+                  checked={allSelected}
+                  ariaLabel={allSelected ? "Unselect all" : "Select all"}
+                  onClick={() => {
+                    setSelectedBookIdSet((prev) => {
+                      const next = new Set<number>();
+                      if (selectableItems.length === 0) return next;
+                      if (prev.size !== selectableItems.length) {
+                        selectableItems.forEach((it) => next.add(it.bookId!));
+                      }
+                      return next;
+                    });
+                  }}
+                />
+                <span className="text-text-sm font-medium tracking-[-0.02em] text-neutral-950">
+                  Select All
+                </span>
+              </div>
+
+              <div className="h-px w-full bg-neutral-200" />
+
+              {myCartQuery.isLoading ? (
+                <div className="space-y-lg py-lg">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-start gap-lg">
+                      <div className="h-5 w-5 rounded bg-neutral-100" />
+                      <div className="h-20 w-14 rounded-xl bg-neutral-100" />
+                      <div className="flex-1">
+                        <div className="h-6 w-24 rounded bg-neutral-100" />
+                        <div className="mt-sm h-5 w-44 rounded bg-neutral-100" />
+                        <div className="mt-sm h-4 w-28 rounded bg-neutral-100" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : myCartQuery.isError ? (
+                <div className="py-4xl text-center text-text-sm font-medium tracking-[-0.02em] text-neutral-500">
+                  Unable to load cart. Please sign in again.
+                </div>
+              ) : items.length === 0 ? (
+                <div className="py-4xl text-center text-text-sm font-medium tracking-[-0.02em] text-neutral-500">
+                  Your cart is empty.
+                </div>
+              ) : (
+                <div>
+                  {items.map((item, idx) => {
+                    const bookId = item.bookId;
+                    const checked =
+                      typeof bookId === "number" &&
+                      selectedBookIdSet.has(bookId);
+                    const coverSrc = toAbsoluteAssetUrl(item.coverImage);
+                    const coverIsDataUrl = Boolean(
+                      coverSrc?.startsWith("data:"),
+                    );
+
+                    return (
+                      <div key={item.key}>
+                        <div className="flex items-start gap-lg py-lg">
+                          <Checkbox
+                            checked={checked}
+                            ariaLabel={
+                              checked ? "Unselect item" : "Select item"
+                            }
+                            onClick={() => {
+                              if (typeof bookId !== "number") return;
+                              setSelectedBookIdSet((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(bookId)) next.delete(bookId);
+                                else next.add(bookId);
+                                return next;
+                              });
+                            }}
+                          />
+
+                          <div className="relative h-20 w-14 overflow-hidden rounded-xl bg-neutral-100">
+                            {coverSrc ? (
+                              <Image
+                                src={coverSrc}
+                                alt=""
+                                fill
+                                sizes="56px"
+                                className="object-cover"
+                                unoptimized={coverIsDataUrl}
+                              />
+                            ) : null}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="inline-flex items-center rounded-full border border-neutral-300 bg-base-white px-md py-0.5 text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
+                              {item.categoryName}
+                            </div>
+                            <div className="mt-sm truncate text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
+                              {item.title}
+                            </div>
+                            <div className="mt-xs truncate text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
+                              {item.authorName}
+                            </div>
+                          </div>
+                        </div>
+
+                        {idx < items.length - 1 ? (
+                          <div className="h-px w-full bg-neutral-200" />
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <Footer />
+          </main>
         </div>
 
-        <main className={cn("pt-2xl", selectedCount > 0 && "pb-11xl")}>
-          <div className="flex items-center justify-between">
-            <h1 className="text-display-sm font-bold tracking-[-0.02em] text-neutral-950">
-              My Cart
-            </h1>
-
-            <button
-              type="button"
-              aria-label={editMode ? "Done" : "Delete item from my cart"}
-              onClick={() => {
-                setEditMode((prev) => !prev);
-                setSelectedBookIdSet(new Set());
-              }}
-              className="inline-flex h-10 w-10 items-center justify-center text-neutral-950"
+        <div className="md:hidden">
+          {isMdUp === false && selectedCount > 0 ? (
+            <Drawer
+              defaultOpen
+              direction="bottom"
+              dismissible={false}
+              modal={false}
+              shouldScaleBackground={false}
             >
-              {editMode ? (
-                <span className="text-text-sm font-semibold tracking-[-0.02em]">
-                  Done
-                </span>
-              ) : (
-                <Trash2Icon className="h-5 w-5" />
-              )}
-            </button>
-          </div>
+              <DrawerContent
+                side="bottom"
+                hideHandle
+                hideOverlay
+                overlayClassName="bg-black/0"
+                className="px-0 mb-0 rounded-b-none border-x-0 border-t-0"
+              >
+                <DrawerHeader className="sr-only">
+                  <DrawerTitle>Borrow Book</DrawerTitle>
+                </DrawerHeader>
 
-          <div className="mt-3xl">
-            <div className="flex items-center gap-lg py-md">
-              <Checkbox
-                checked={allSelected}
-                ariaLabel={allSelected ? "Unselect all" : "Select all"}
-                onClick={() => {
-                  setSelectedBookIdSet((prev) => {
-                    const next = new Set<number>();
-                    if (selectableItems.length === 0) return next;
-                    if (prev.size !== selectableItems.length) {
-                      selectableItems.forEach((it) => next.add(it.bookId!));
-                    }
-                    return next;
-                  });
-                }}
-              />
-              <span className="text-text-sm font-medium tracking-[-0.02em] text-neutral-950">
-                Select All
-              </span>
-            </div>
-
-            <div className="h-px w-full bg-neutral-200" />
-
-            {myCartQuery.isLoading ? (
-              <div className="space-y-lg py-lg">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="flex items-start gap-lg">
-                    <div className="h-5 w-5 rounded bg-neutral-100" />
-                    <div className="h-20 w-14 rounded-xl bg-neutral-100" />
-                    <div className="flex-1">
-                      <div className="h-6 w-24 rounded bg-neutral-100" />
-                      <div className="mt-sm h-5 w-44 rounded bg-neutral-100" />
-                      <div className="mt-sm h-4 w-28 rounded bg-neutral-100" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : myCartQuery.isError ? (
-              <div className="py-4xl text-center text-text-sm font-medium tracking-[-0.02em] text-neutral-500">
-                Unable to load cart. Please sign in again.
-              </div>
-            ) : items.length === 0 ? (
-              <div className="py-4xl text-center text-text-sm font-medium tracking-[-0.02em] text-neutral-500">
-                Your cart is empty.
-              </div>
-            ) : (
-              <div>
-                {items.map((item, idx) => {
-                  const bookId = item.bookId;
-                  const checked =
-                    typeof bookId === "number" && selectedBookIdSet.has(bookId);
-                  const coverSrc = toAbsoluteAssetUrl(item.coverImage);
-                  const coverIsDataUrl = Boolean(coverSrc?.startsWith("data:"));
-
-                  return (
-                    <div key={item.key}>
-                      <div className="flex items-start gap-lg py-lg">
-                        <Checkbox
-                          checked={checked}
-                          ariaLabel={checked ? "Unselect item" : "Select item"}
-                          onClick={() => {
-                            if (typeof bookId !== "number") return;
-                            setSelectedBookIdSet((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(bookId)) next.delete(bookId);
-                              else next.add(bookId);
-                              return next;
-                            });
-                          }}
-                        />
-
-                        <div className="relative h-20 w-14 overflow-hidden rounded-xl bg-neutral-100">
-                          {coverSrc ? (
-                            <Image
-                              src={coverSrc}
-                              alt=""
-                              fill
-                              sizes="56px"
-                              className="object-cover"
-                              unoptimized={coverIsDataUrl}
-                            />
-                          ) : null}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="inline-flex items-center rounded-full border border-neutral-300 bg-base-white px-md py-0.5 text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
-                            {item.categoryName}
-                          </div>
-                          <div className="mt-sm truncate text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
-                            {item.title}
-                          </div>
-                          <div className="mt-xs truncate text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
-                            {item.authorName}
-                          </div>
-                        </div>
+                <div className="border-b border-neutral-200 bg-base-white">
+                  <div className="mx-auto flex w-full max-w-96 items-center justify-between gap-xl px-xl pb-xl pt-[calc(16px+env(safe-area-inset-top))]">
+                    <div>
+                      <div className="text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
+                        Total Book
                       </div>
-
-                      {idx < items.length - 1 ? (
-                        <div className="h-px w-full bg-neutral-200" />
-                      ) : null}
+                      <div className="mt-xxs text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
+                        {selectedCount} Items
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
 
-          <Footer />
-        </main>
-      </div>
-
-      {selectedCount > 0 ? (
-        <Drawer
-          defaultOpen
-          direction="bottom"
-          dismissible={false}
-          modal={false}
-          shouldScaleBackground={false}
-        >
-          <DrawerContent
-            side="bottom"
-            hideHandle
-            hideOverlay
-            overlayClassName="bg-black/0"
-            className="px-0 mb-0 rounded-b-none border-x-0 border-t-0"
-          >
-            <DrawerHeader className="sr-only">
-              <DrawerTitle>Borrow Book</DrawerTitle>
-            </DrawerHeader>
-
-            <div className="border-b border-neutral-200 bg-base-white">
-              <div className="mx-auto flex w-full max-w-96 items-center justify-between gap-xl px-xl pb-xl pt-[calc(16px+env(safe-area-inset-top))]">
-                <div>
-                  <div className="text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
-                    Total Book
-                  </div>
-                  <div className="mt-xxs text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
-                    {selectedCount} Items
+                    <button
+                      type="button"
+                      disabled={editMode ? actionPending : borrowPending}
+                      onClick={async () => {
+                        if (editMode) {
+                          await handleDeleteSelected();
+                          return;
+                        }
+                        await handleBorrowSelected();
+                      }}
+                      className={cn(
+                        "h-10 min-w-38 rounded-full px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white",
+                        editMode ? "bg-accent-red" : "bg-primary-600",
+                        (editMode ? actionPending : borrowPending) &&
+                          "cursor-not-allowed opacity-60",
+                      )}
+                    >
+                      {editMode
+                        ? actionPending
+                          ? "Deleting..."
+                          : "Delete"
+                        : borrowPending
+                          ? "Processing..."
+                          : "Borrow Book"}
+                    </button>
                   </div>
                 </div>
+              </DrawerContent>
+            </Drawer>
+          ) : null}
+        </div>
+      </div>
 
-                <button
-                  type="button"
-                  disabled={editMode ? actionPending : borrowPending}
-                  onClick={async () => {
-                    if (editMode) {
-                      await handleDeleteSelected();
-                      return;
-                    }
+      {/* Desktop layout (md+) */}
+      <div className="hidden md:block px-6xl">
+        <div className="mx-auto w-full max-w-300">
+          <DesktopHeader
+            onLogoClick={() => router.push("/home")}
+            onBagClick={() => router.push("/cart")}
+            cartItemCount={cartItemCount}
+            searchValue={desktopSearchValue}
+            onSearchValueChange={setDesktopSearchValue}
+            onSearchSubmit={(q) => {
+              const url = q
+                ? `/book-list?q=${encodeURIComponent(q)}`
+                : "/book-list";
+              setDesktopSearchValue("");
+              router.push(url);
+            }}
+            profilePhotoSrc={profilePhotoSrc}
+            profileAlt={user?.name ? `${user.name} avatar` : "User"}
+            avatarUnoptimized={avatarUnoptimized}
+            userName={user?.name ?? "User"}
+          />
 
-                    if (borrowInFlightRef.current) return;
+          <main className="pb-6xl">
+            <div className="flex items-center justify-between pt-6xl">
+              <h1 className="text-display-sm font-bold tracking-[-0.02em] text-neutral-950">
+                My Cart
+              </h1>
 
-                    if (selectedBookIds.length === 0) {
-                      toast.error("Pilih minimal 1 buku.");
-                      return;
-                    }
-
-                    borrowInFlightRef.current = true;
-                    setBorrowPending(true);
-                    try {
-                      // Store only selected items for Checkout.
-                      if (typeof window !== "undefined") {
-                        const selectedItems = items
-                          .filter(
-                            (it) =>
-                              typeof it.bookId === "number" &&
-                              selectedBookIdSet.has(it.bookId),
-                          )
-                          .map((it) => ({
-                            key: it.key,
-                            itemId: it.itemId ?? null,
-                            bookId: it.bookId,
-                            title: it.title,
-                            authorName: it.authorName,
-                            categoryName: it.categoryName,
-                            coverImage: it.coverImage ?? null,
-                          }));
-
-                        window.sessionStorage.setItem(
-                          "checkout:selectedItems",
-                          JSON.stringify(selectedItems),
-                        );
-                      }
-                      setSelectedBookIdSet(new Set());
-                      router.push("/checkout");
-                    } finally {
-                      setBorrowPending(false);
-                      borrowInFlightRef.current = false;
-                    }
-                  }}
-                  className={cn(
-                    "h-10 min-w-38 rounded-full px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white",
-                    editMode ? "bg-accent-red" : "bg-primary-600",
-                    (editMode ? actionPending : borrowPending) &&
-                      "cursor-not-allowed opacity-60",
-                  )}
-                >
-                  {editMode
-                    ? actionPending
-                      ? "Deleting..."
-                      : "Delete"
-                    : borrowPending
-                      ? "Processing..."
-                      : "Borrow Book"}
-                </button>
-              </div>
+              <button
+                type="button"
+                aria-label={editMode ? "Done" : "Delete item from my cart"}
+                onClick={() => {
+                  setEditMode((prev) => !prev);
+                  setSelectedBookIdSet(new Set());
+                }}
+                className="inline-flex h-10 w-10 items-center justify-center text-neutral-950"
+              >
+                {editMode ? (
+                  <span className="text-text-sm font-semibold tracking-[-0.02em]">
+                    Done
+                  </span>
+                ) : (
+                  <Trash2Icon className="h-5 w-5" />
+                )}
+              </button>
             </div>
-          </DrawerContent>
-        </Drawer>
-      ) : null}
+
+            <div className="mt-3xl grid grid-cols-[minmax(0,1fr)_26rem] gap-6xl">
+              <section>
+                <div>
+                  <div className="flex items-center gap-lg py-md">
+                    <Checkbox
+                      checked={allSelected}
+                      ariaLabel={allSelected ? "Unselect all" : "Select all"}
+                      onClick={() => {
+                        setSelectedBookIdSet((prev) => {
+                          const next = new Set<number>();
+                          if (selectableItems.length === 0) return next;
+                          if (prev.size !== selectableItems.length) {
+                            selectableItems.forEach((it) =>
+                              next.add(it.bookId!),
+                            );
+                          }
+                          return next;
+                        });
+                      }}
+                    />
+                    <span className="text-text-sm font-medium tracking-[-0.02em] text-neutral-950">
+                      Select All
+                    </span>
+                  </div>
+
+                  <div className="h-px w-full bg-neutral-200" />
+
+                  {myCartQuery.isLoading ? (
+                    <div className="space-y-2xl py-4xl">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="flex items-start gap-xl">
+                          <div className="h-5 w-5 rounded bg-neutral-100" />
+                          <div className="h-24 w-16 rounded-xl bg-neutral-100" />
+                          <div className="flex-1">
+                            <div className="h-6 w-24 rounded bg-neutral-100" />
+                            <div className="mt-sm h-5 w-60 rounded bg-neutral-100" />
+                            <div className="mt-sm h-4 w-40 rounded bg-neutral-100" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : myCartQuery.isError ? (
+                    <div className="py-6xl text-center text-text-sm font-medium tracking-[-0.02em] text-neutral-500">
+                      Unable to load cart. Please sign in again.
+                    </div>
+                  ) : items.length === 0 ? (
+                    <div className="py-6xl text-center text-text-sm font-medium tracking-[-0.02em] text-neutral-500">
+                      Your cart is empty.
+                    </div>
+                  ) : (
+                    <div>
+                      {items.map((item, idx) => {
+                        const bookId = item.bookId;
+                        const checked =
+                          typeof bookId === "number" &&
+                          selectedBookIdSet.has(bookId);
+                        const coverSrc = toAbsoluteAssetUrl(item.coverImage);
+                        const coverIsDataUrl = Boolean(
+                          coverSrc?.startsWith("data:"),
+                        );
+
+                        return (
+                          <div key={item.key}>
+                            <div className="flex items-start gap-xl py-4xl">
+                              <Checkbox
+                                checked={checked}
+                                ariaLabel={
+                                  checked ? "Unselect item" : "Select item"
+                                }
+                                onClick={() => {
+                                  if (typeof bookId !== "number") return;
+                                  setSelectedBookIdSet((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(bookId)) next.delete(bookId);
+                                    else next.add(bookId);
+                                    return next;
+                                  });
+                                }}
+                              />
+
+                              <div className="relative h-24 w-16 overflow-hidden rounded-xl bg-neutral-100">
+                                {coverSrc ? (
+                                  <Image
+                                    src={coverSrc}
+                                    alt=""
+                                    fill
+                                    sizes="64px"
+                                    className="object-cover"
+                                    unoptimized={coverIsDataUrl}
+                                  />
+                                ) : null}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <div className="inline-flex items-center rounded-full border border-neutral-300 bg-base-white px-md py-0.5 text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
+                                  {item.categoryName}
+                                </div>
+                                <div className="mt-sm text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
+                                  {item.title}
+                                </div>
+                                <div className="mt-xs text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
+                                  {item.authorName}
+                                </div>
+                              </div>
+                            </div>
+
+                            {idx < items.length - 1 ? (
+                              <div className="h-px w-full bg-neutral-200" />
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <aside className="self-start">
+                <div className="rounded-2xl border border-neutral-200 bg-base-white p-4xl">
+                  <div className="text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
+                    Loan Summary
+                  </div>
+
+                  <div className="mt-3xl flex items-center justify-between">
+                    <div className="text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
+                      Total Book
+                    </div>
+                    <div className="text-text-xs font-bold tracking-[-0.02em] text-neutral-950">
+                      {selectedCount} Items
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={
+                      editMode
+                        ? actionPending || selectedItemIds.length === 0
+                        : borrowPending || selectedBookIds.length === 0
+                    }
+                    onClick={async () => {
+                      if (editMode) {
+                        await handleDeleteSelected();
+                        return;
+                      }
+                      await handleBorrowSelected();
+                    }}
+                    className={cn(
+                      "mt-3xl h-10 w-full rounded-full px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white",
+                      editMode ? "bg-accent-red" : "bg-primary-600",
+                      (editMode
+                        ? actionPending || selectedItemIds.length === 0
+                        : borrowPending || selectedBookIds.length === 0) &&
+                        "cursor-not-allowed opacity-60",
+                    )}
+                  >
+                    {editMode
+                      ? actionPending
+                        ? "Deleting..."
+                        : "Delete"
+                      : borrowPending
+                        ? "Processing..."
+                        : "Borrow Book"}
+                  </button>
+                </div>
+              </aside>
+            </div>
+
+            <Footer className="px-0" />
+          </main>
+        </div>
+      </div>
     </div>
   );
 }

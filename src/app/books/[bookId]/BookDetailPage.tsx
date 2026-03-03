@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -1110,7 +1110,13 @@ export default function BookDetailPage() {
                 Home
               </button>
               <span className="px-xs text-neutral-400">&gt;</span>
-              <span className="text-neutral-600">Categories</span>
+              <button
+                type="button"
+                onClick={() => router.push("/book-list")}
+                className="text-primary-600"
+              >
+                Categories
+              </button>
               <span className="px-xs text-neutral-400">&gt;</span>
               <span className="text-neutral-600">{title}</span>
             </div>
