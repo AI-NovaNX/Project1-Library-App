@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type RefObject, useEffect, useState } from "react";
@@ -92,7 +93,11 @@ export function PageHeader({
 
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <button type="button" aria-label="Profile menu">
+            <button
+              type="button"
+              aria-label="Profile menu"
+              className="flex items-center gap-sm"
+            >
               <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
                 <Image
                   src={profilePhotoSrc}
@@ -102,6 +107,7 @@ export function PageHeader({
                   unoptimized={avatarUnoptimized}
                 />
               </div>
+              <ChevronDown aria-hidden className="hidden h-5 w-5 md:block" />
             </button>
           </DropdownMenuTrigger>
 
@@ -273,7 +279,11 @@ export function HomeHeader({
           {showLoggedIn ? (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
-                <button type="button" aria-label="Profile menu">
+                <button
+                  type="button"
+                  aria-label="Profile menu"
+                  className="flex items-center gap-sm"
+                >
                   <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
                     <Image
                       src={profilePhotoSrc}
@@ -283,6 +293,10 @@ export function HomeHeader({
                       unoptimized={avatarUnoptimized}
                     />
                   </div>
+                  <ChevronDown
+                    aria-hidden
+                    className="hidden h-5 w-5 md:block"
+                  />
                 </button>
               </DropdownMenuTrigger>
 
@@ -480,6 +494,184 @@ export function HomeHeader({
           </button>
         </div>
       ) : null}
+    </header>
+  );
+}
+
+type DesktopHeaderProps = {
+  onLogoClick: () => void;
+  onBagClick?: () => void;
+  cartItemCount: number;
+  showBagBadge?: boolean;
+  showSearch?: boolean;
+  searchValue?: string;
+  onSearchValueChange?: (value: string) => void;
+  onSearchSubmit?: (value: string) => void;
+  searchPlaceholder?: string;
+  profilePhotoSrc: string;
+  profileAlt?: string;
+  avatarUnoptimized?: boolean;
+  userName?: string;
+};
+
+export function DesktopHeader({
+  onLogoClick,
+  onBagClick,
+  cartItemCount,
+  showBagBadge = true,
+  showSearch = true,
+  searchValue = "",
+  onSearchValueChange,
+  onSearchSubmit,
+  searchPlaceholder = "Search book",
+  profilePhotoSrc,
+  profileAlt = "User",
+  avatarUnoptimized = false,
+  userName = "User",
+}: DesktopHeaderProps) {
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+
+  return (
+    <header className="sticky top-0 z-40 bg-neutral-50 py-4xl">
+      <div className="flex items-center gap-4xl">
+        <button
+          type="button"
+          aria-label="Home"
+          onClick={onLogoClick}
+          className="flex items-center gap-lg"
+        >
+          <Image
+            src="/Login-Page/Logo.svg"
+            alt="Booky logo"
+            width={40}
+            height={40}
+            className="h-10 w-10"
+            priority
+          />
+          <span className="font-sans text-text-xl font-bold tracking-[-0.02em] text-neutral-950">
+            Booky
+          </span>
+        </button>
+
+        <div className="flex flex-1 items-center justify-between gap-4xl">
+          {showSearch ? (
+            <div className="relative w-full max-w-128">
+              <Image
+                src="/Home/SearchMute.svg"
+                alt=""
+                width={16}
+                height={16}
+                className="pointer-events-none absolute left-lg top-1/2 h-4 w-4 -translate-y-1/2"
+              />
+              <input
+                value={searchValue}
+                onChange={(e) => onSearchValueChange?.(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  const q = searchValue.trim();
+                  if (onSearchSubmit) {
+                    onSearchSubmit(q);
+                    return;
+                  }
+                  const url = q
+                    ? `/book-list?q=${encodeURIComponent(q)}`
+                    : "/book-list";
+                  router.push(url);
+                }}
+                placeholder={searchPlaceholder}
+                className="h-10 w-full rounded-full border border-neutral-300 bg-base-white pl-4xl pr-xl text-text-sm font-medium text-neutral-950 placeholder:text-neutral-400 focus:outline-none"
+              />
+            </div>
+          ) : (
+            <div />
+          )}
+
+          <div className="flex shrink-0 items-center gap-xl">
+            <button
+              type="button"
+              aria-label="Bag"
+              className="relative"
+              onClick={onBagClick}
+            >
+              <Image
+                src="/Home/Bag.svg"
+                alt=""
+                width={28}
+                height={28}
+                className="h-7 w-7"
+              />
+              {showBagBadge && cartItemCount > 0 ? (
+                <div className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-red px-1 text-[10px] font-bold text-base-white">
+                  {cartItemCount}
+                </div>
+              ) : null}
+            </button>
+
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Profile menu"
+                  className="flex items-center gap-md"
+                >
+                  <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
+                    <Image
+                      src={profilePhotoSrc}
+                      alt={profileAlt}
+                      fill
+                      sizes="40px"
+                      unoptimized={avatarUnoptimized}
+                    />
+                  </div>
+                  <span className="text-text-sm font-semibold tracking-[-0.02em] text-neutral-950">
+                    {userName}
+                  </span>
+                  <ChevronDown aria-hidden className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent
+                align="end"
+                sideOffset={12}
+                className="w-56 rounded-2xl border border-neutral-200 bg-base-white p-xl shadow-md"
+              >
+                <div className="flex flex-col gap-xl">
+                  <DropdownMenuItem
+                    onSelect={() => router.push("/profile")}
+                    className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 focus:bg-transparent focus:text-neutral-950 data-highlighted:bg-transparent data-highlighted:text-neutral-950"
+                  >
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => router.push("/borrowed-list")}
+                    className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 focus:bg-transparent focus:text-neutral-950 data-highlighted:bg-transparent data-highlighted:text-neutral-950"
+                  >
+                    Borrowed List
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => router.push("/reviews")}
+                    className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 focus:bg-transparent focus:text-neutral-950 data-highlighted:bg-transparent data-highlighted:text-neutral-950"
+                  >
+                    Reviews
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.replace("/home");
+                      requestAnimationFrame(() => {
+                        dispatch(clearAuth());
+                      });
+                    }}
+                    className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-accent-red focus:bg-transparent focus:text-accent-red data-highlighted:bg-transparent data-highlighted:text-accent-red"
+                  >
+                    Logout
+                  </DropdownMenuItem>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
     </header>
   );
 }

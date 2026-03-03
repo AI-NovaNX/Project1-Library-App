@@ -8,17 +8,9 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useAppSelector } from "@/app/store/hooks";
-import { useAppDispatch } from "@/app/store/hooks";
-import { clearAuth } from "@/features/auth/authSlice";
 import { useRecommendedBooksInfinite } from "@/features/books/booksHooks";
 import { usePopularAuthors } from "@/features/authors/authorsHooks";
-import { HomeHeader } from "@/components/Header";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DesktopHeader, HomeHeader } from "@/components/Header";
 
 type CategoryCard = {
   label: string;
@@ -36,7 +28,6 @@ const CATEGORIES: CategoryCard[] = [
 
 export default function HomePage() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [
@@ -649,173 +640,77 @@ export default function HomePage() {
       {/* Desktop layout (md+) */}
       <div className="hidden md:block px-6xl">
         <div className="mx-auto w-full max-w-300">
-          <header className="sticky top-0 z-40 bg-neutral-50 py-4xl">
-            <div className="flex items-center gap-4xl">
-              <button
-                type="button"
-                aria-label="Home"
-                onClick={() => {
-                  setIsSearchOpen(false);
-                  setSearchValue("");
-                  router.push("/home");
-                }}
-                className="flex items-center gap-lg"
-              >
-                <Image
-                  src="/Login-Page/Logo.svg"
-                  alt="Booky logo"
-                  width={40}
-                  height={40}
-                  className="h-10 w-10"
-                  priority
-                />
-                <span className="font-sans text-text-xl font-bold tracking-[-0.02em] text-neutral-950">
-                  Booky
-                </span>
-              </button>
+          {showLoggedIn ? (
+            <DesktopHeader
+              onLogoClick={() => {
+                setIsSearchOpen(false);
+                setSearchValue("");
+                router.push("/home");
+              }}
+              onBagClick={() => router.push("/cart")}
+              cartItemCount={cartItemCount}
+              showBagBadge={SHOW_BAG_BADGE}
+              searchValue={searchValue}
+              onSearchValueChange={setSearchValue}
+              onSearchSubmit={(q) => {
+                const url = q
+                  ? `/book-list?q=${encodeURIComponent(q)}`
+                  : "/book-list";
+                setSearchValue("");
+                router.push(url);
+              }}
+              profilePhotoSrc={profilePhotoSrc}
+              profileAlt={user?.name ? `${user.name} avatar` : "User avatar"}
+              avatarUnoptimized={avatarUnoptimized}
+              userName={user?.name ?? "User"}
+            />
+          ) : (
+            <header className="sticky top-0 z-40 bg-neutral-50 py-4xl">
+              <div className="flex items-center gap-4xl">
+                <button
+                  type="button"
+                  aria-label="Home"
+                  onClick={() => {
+                    setIsSearchOpen(false);
+                    setSearchValue("");
+                    router.push("/home");
+                  }}
+                  className="flex items-center gap-lg"
+                >
+                  <Image
+                    src="/Login-Page/Logo.svg"
+                    alt="Booky logo"
+                    width={40}
+                    height={40}
+                    className="h-10 w-10"
+                    priority
+                  />
+                  <span className="font-sans text-text-xl font-bold tracking-[-0.02em] text-neutral-950">
+                    Booky
+                  </span>
+                </button>
 
-              <div
-                className={`flex flex-1 items-center gap-4xl ${showLoggedIn ? "justify-between" : "justify-end"}`}
-              >
-                {showLoggedIn ? (
-                  <div className="relative w-full max-w-128">
-                    <Image
-                      src="/Home/SearchMute.svg"
-                      alt=""
-                      width={16}
-                      height={16}
-                      className="pointer-events-none absolute left-lg top-1/2 h-4 w-4 -translate-y-1/2"
-                    />
-                    <input
-                      ref={searchInputRef}
-                      value={searchValue}
-                      onChange={(e) => setSearchValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key !== "Enter") return;
-                        const q = searchValue.trim();
-                        const url = q
-                          ? `/book-list?q=${encodeURIComponent(q)}`
-                          : "/book-list";
-
-                        setSearchValue("");
-                        router.push(url);
-                      }}
-                      placeholder="Search book"
-                      className="h-10 w-full rounded-full border border-neutral-300 bg-base-white pl-4xl pr-xl text-text-sm font-medium text-neutral-950 placeholder:text-neutral-400 focus:outline-none"
-                    />
+                <div className="flex flex-1 items-center justify-end gap-4xl">
+                  <div className="flex shrink-0 items-center gap-md">
+                    <button
+                      type="button"
+                      onClick={() => router.push("/login")}
+                      className="h-10 rounded-full border border-neutral-300 bg-base-white px-xl text-text-sm font-semibold tracking-[-0.02em] text-neutral-950"
+                    >
+                      Login
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/register")}
+                      className="h-10 rounded-full bg-primary-600 px-xl text-text-sm font-semibold tracking-[-0.02em] text-neutral-25"
+                    >
+                      Register
+                    </button>
                   </div>
-                ) : null}
-
-                <div className="flex shrink-0 items-center gap-xl">
-                  {showLoggedIn ? (
-                    <>
-                      <button
-                        type="button"
-                        aria-label="Bag"
-                        className="relative"
-                        onClick={() => router.push("/cart")}
-                      >
-                        <Image
-                          src="/Home/Bag.svg"
-                          alt=""
-                          width={28}
-                          height={28}
-                          className="h-7 w-7"
-                        />
-                        {SHOW_BAG_BADGE && cartItemCount > 0 ? (
-                          <div className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-red px-1 text-[10px] font-bold text-base-white">
-                            {cartItemCount}
-                          </div>
-                        ) : null}
-                      </button>
-
-                      <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            aria-label="Profile menu"
-                            className="flex items-center gap-md"
-                          >
-                            <div className="relative h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
-                              <Image
-                                src={profilePhotoSrc}
-                                alt={
-                                  user?.name
-                                    ? `${user.name} avatar`
-                                    : "User avatar"
-                                }
-                                fill
-                                sizes="40px"
-                                unoptimized={avatarUnoptimized}
-                              />
-                            </div>
-                            <span className="text-text-sm font-semibold tracking-[-0.02em] text-neutral-950">
-                              {user?.name ?? "User"}
-                            </span>
-                          </button>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent
-                          align="end"
-                          sideOffset={12}
-                          className="w-56 rounded-2xl border border-neutral-200 bg-base-white p-xl shadow-md"
-                        >
-                          <div className="flex flex-col gap-xl">
-                            <DropdownMenuItem
-                              onSelect={() => router.push("/profile")}
-                              className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 focus:bg-transparent focus:text-neutral-950 data-highlighted:bg-transparent data-highlighted:text-neutral-950"
-                            >
-                              Profile
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={() => router.push("/borrowed-list")}
-                              className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 focus:bg-transparent focus:text-neutral-950 data-highlighted:bg-transparent data-highlighted:text-neutral-950"
-                            >
-                              Borrowed List
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={() => router.push("/reviews")}
-                              className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 focus:bg-transparent focus:text-neutral-950 data-highlighted:bg-transparent data-highlighted:text-neutral-950"
-                            >
-                              Reviews
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={() => {
-                                router.replace("/home");
-                                requestAnimationFrame(() => {
-                                  dispatch(clearAuth());
-                                });
-                              }}
-                              className="px-0 py-0 text-text-sm font-semibold tracking-[-0.02em] text-accent-red focus:bg-transparent focus:text-accent-red data-highlighted:bg-transparent data-highlighted:text-accent-red"
-                            >
-                              Logout
-                            </DropdownMenuItem>
-                          </div>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-md">
-                      <button
-                        type="button"
-                        onClick={() => router.push("/login")}
-                        className="h-10 rounded-full border border-neutral-300 bg-base-white px-xl text-text-sm font-semibold tracking-[-0.02em] text-neutral-950"
-                      >
-                        Login
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => router.push("/register")}
-                        className="h-10 rounded-full bg-primary-600 px-xl text-text-sm font-semibold tracking-[-0.02em] text-neutral-25"
-                      >
-                        Register
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
-            </div>
-          </header>
+            </header>
+          )}
 
           <main className="pb-6xl">
             <div className="overflow-hidden rounded-2xl">
