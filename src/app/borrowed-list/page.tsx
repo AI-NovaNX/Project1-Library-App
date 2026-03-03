@@ -103,6 +103,14 @@ function computeDurationDays(
 
 type BorrowedFilter = "all" | "active" | "returned" | "overdue";
 
+function toApiStatus(filter: BorrowedFilter): string | undefined {
+  // Backend query enum appears to be lowercase.
+  if (filter === "active") return "active";
+  if (filter === "returned") return "returned";
+  if (filter === "overdue") return "overdue";
+  return undefined;
+}
+
 function matchesFilter(filter: BorrowedFilter, loan: NormalizedLoan): boolean {
   if (filter === "active") return loan.status === "ACTIVE";
   if (filter === "returned") return loan.status === "RETURNED";
@@ -427,12 +435,15 @@ export default function BorrowedListPage() {
 
   const afterBorrowRef = useRef<AfterBorrowMarker | null>(null);
   const afterBorrowSyncRef = useRef(false);
+  const autoPageRef = useRef<{ key: string; attempts: number } | null>(null);
 
   const debouncedSearch = useDebounce(search, 250);
   const apiQuery = useMemo(() => {
     const trimmed = debouncedSearch.trim();
     return trimmed.length > 0 ? trimmed : "";
   }, [debouncedSearch]);
+
+  const apiStatus = useMemo(() => toApiStatus(filter), [filter]);
 
   const [reviewModal, setReviewModal] = useState<ReviewModalState>({
     open: false,
@@ -477,7 +488,7 @@ export default function BorrowedListPage() {
     profilePhotoSrc.startsWith("data:") || profilePhotoSrc.startsWith("blob:");
 
   const loansQuery = useInfiniteQuery({
-    queryKey: ["meLoans", token, apiQuery],
+    queryKey: ["meLoans", token, apiQuery, apiStatus],
     enabled: Boolean(token),
     refetchOnMount: "always",
     initialPageParam: 1,
@@ -495,6 +506,7 @@ export default function BorrowedListPage() {
       const res = await http.get("/api/loans/my", {
         params: {
           q: apiQuery || undefined,
+          status: apiStatus,
           page,
           limit,
           _cb: cacheBust,
@@ -756,9 +768,10 @@ export default function BorrowedListPage() {
 
         const fetchPage = async (page: number) => {
           const cacheBust = Date.now();
-          const res = await http.get("/api/loans/my", {
+          const baseReq = {
             params: {
               q: apiQuery || undefined,
+              status: "active",
               page,
               limit,
               _cb: cacheBust,
@@ -767,7 +780,22 @@ export default function BorrowedListPage() {
               ...noCacheHeaders,
               ...(token ? { Authorization: `Bearer ${token}` } : null),
             },
-          });
+          };
+
+          const res = await http
+            .get("/api/loans/my", baseReq)
+            .catch(async (err) => {
+              const statusCode = (err as { response?: { status?: unknown } })
+                .response?.status;
+              if (statusCode === 400) {
+                const retryReq = {
+                  ...baseReq,
+                  params: { ...baseReq.params, status: undefined },
+                };
+                return http.get("/api/loans/my", retryReq);
+              }
+              throw err;
+            });
 
           const payload = res.data;
           const rows = extractLoansArray(payload);
@@ -798,7 +826,7 @@ export default function BorrowedListPage() {
         const pagesToTry: number[] = [];
         if (typeof totalPages === "number" && totalPages >= 1) {
           for (
-            let p = totalPages;
+            let p: number = totalPages;
             p >= 1 && pagesToTry.length < maxPagesToScan;
             p -= 1
           ) {
@@ -910,6 +938,49 @@ export default function BorrowedListPage() {
 
     return sorted;
   }, [allLoans, filter, search]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!token) return;
+    if (loansLoading) return;
+    if (!loansHasData) return;
+    if (!loansHasNextPage) return;
+    if (loansFetchingNextPage) return;
+
+    // When the user selects a filter other than "All", it's possible the
+    // matching loans are not on the first page (backend may sort oldest->newest).
+    // If we render an empty state, the infinite list never mounts and pagination
+    // won't advance. Auto-fetch a few pages to surface matches.
+    if (filter === "all") return;
+    if (visibleLoans.length > 0) return;
+
+    const key = `${filter}|${apiQuery}`;
+    const state = autoPageRef.current;
+    if (!state || state.key !== key) {
+      autoPageRef.current = { key, attempts: 0 };
+    }
+
+    const next = autoPageRef.current;
+    if (!next) return;
+
+    const maxAutoPages = 20;
+    if (next.attempts >= maxAutoPages) return;
+
+    next.attempts += 1;
+    loansFetchNextPage().catch((err) => {
+      toast.error(getErrorMessage(err));
+    });
+  }, [
+    apiQuery,
+    filter,
+    loansFetchNextPage,
+    loansFetchingNextPage,
+    loansHasData,
+    loansHasNextPage,
+    loansLoading,
+    token,
+    visibleLoans.length,
+  ]);
 
   const categoriesQuery = useCategories({ enabled: Boolean(token) });
 

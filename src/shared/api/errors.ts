@@ -38,20 +38,22 @@ export function getErrorMessage(err: unknown): string {
     return null;
   };
 
-  if (err instanceof Error) return err.message;
-
+  // Prefer API-provided details when available (e.g. AxiosError.response.data),
+  // otherwise fall back to the generic Error.message.
   if (typeof err === "object" && err) {
     const anyErr = err as { message?: unknown; response?: unknown };
-    const topLevel = fromUnknown(anyErr.message);
-    if (topLevel) return topLevel;
-
     const response = anyErr.response as
       | { data?: unknown; status?: unknown }
       | undefined;
 
     const fromResponse = fromUnknown(response?.data);
     if (fromResponse) return fromResponse;
+
+    const fromMessage = fromUnknown(anyErr.message);
+    if (fromMessage) return fromMessage;
   }
+
+  if (err instanceof Error) return err.message;
 
   return "Terjadi kesalahan";
 }

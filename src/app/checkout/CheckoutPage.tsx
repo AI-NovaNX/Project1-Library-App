@@ -10,6 +10,7 @@ import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { meApiWithToken } from "@/features/auth/authApi";
 import { setCartItemCount } from "@/features/cart/cartSlice";
 import { getMyCartApi } from "@/features/cart/cartApi";
+import { getBookByIdApi } from "@/features/books/booksApi";
 import { getErrorMessage } from "@/shared/api/errors";
 import { http } from "@/shared/api/http";
 import { useAuthedImageUrl } from "@/shared/lib/useAuthedImageUrl";
@@ -245,6 +246,28 @@ export default function CheckoutPage() {
   });
 
   const meUser = meQuery.data ?? user ?? null;
+
+  const getOutOfStockMessage = async (
+    bookId: number,
+  ): Promise<string | null> => {
+    if (!Number.isFinite(bookId)) return null;
+    try {
+      const book = await getBookByIdApi(bookId);
+      const raw = (book as { availableCopies?: unknown }).availableCopies;
+      const available =
+        typeof raw === "number" && Number.isFinite(raw)
+          ? raw
+          : typeof raw === "string" && /^-?\d+$/.test(raw.trim())
+            ? Number(raw.trim())
+            : null;
+      if (available !== null && available <= 0) {
+        return "Out of stock: this book is currently borrowed by another user.";
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  };
 
   useEffect(() => {
     if (!token) router.replace("/login");
@@ -607,7 +630,10 @@ export default function CheckoutPage() {
                     return;
                   }
 
-                  if (selectedItemIds.length === 0 && selectedBookIds.length === 0) {
+                  if (
+                    selectedItemIds.length === 0 &&
+                    selectedBookIds.length === 0
+                  ) {
                     toast.error("Buku tidak ditemukan. Silakan kembali.");
                     return;
                   }
@@ -621,7 +647,10 @@ export default function CheckoutPage() {
                     };
 
                     // Direct-borrow flow (from Book Detail): do not require cart itemIds.
-                    if (selectedItemIds.length === 0 && selectedBookIds.length > 0) {
+                    if (
+                      selectedItemIds.length === 0 &&
+                      selectedBookIds.length > 0
+                    ) {
                       const results = await Promise.allSettled(
                         selectedBookIds.map((bookId) =>
                           http.post(
@@ -640,11 +669,20 @@ export default function CheckoutPage() {
                         const firstFailure = results.find(
                           (r) => r.status === "rejected",
                         ) as PromiseRejectedResult | undefined;
-                        toast.error(
-                          firstFailure
-                            ? getErrorMessage(firstFailure.reason)
-                            : "Borrow gagal.",
-                        );
+                        const rawMsg = firstFailure
+                          ? getErrorMessage(firstFailure.reason)
+                          : "Borrow gagal.";
+                        if (/already\s+borrowed/i.test(rawMsg)) {
+                          const firstBookId = selectedBookIds[0];
+                          const outOfStockMsg =
+                            await getOutOfStockMessage(firstBookId);
+                          toast.error(
+                            outOfStockMsg ??
+                              "This book can't be borrowed right now. This usually happens when the book is currently borrowed by someone else, or the system still thinks you haven't returned it yet.",
+                          );
+                        } else {
+                          toast.error(rawMsg);
+                        }
                         return;
                       }
 
@@ -813,11 +851,20 @@ export default function CheckoutPage() {
                         const firstFailure = results.find(
                           (r) => r.status === "rejected",
                         ) as PromiseRejectedResult | undefined;
-                        toast.error(
-                          firstFailure
-                            ? getErrorMessage(firstFailure.reason)
-                            : (lastMessage ?? "No books borrowed."),
-                        );
+                        const rawMsg = firstFailure
+                          ? getErrorMessage(firstFailure.reason)
+                          : (lastMessage ?? "No books borrowed.");
+                        if (/already\s+borrowed/i.test(rawMsg)) {
+                          const firstBookId = fallbackBookIds[0];
+                          const outOfStockMsg =
+                            await getOutOfStockMessage(firstBookId);
+                          toast.error(
+                            outOfStockMsg ??
+                              "One or more books can't be borrowed right now. This usually happens when a book is currently borrowed by someone else, or the system still thinks you haven't returned it yet.",
+                          );
+                        } else {
+                          toast.error(rawMsg);
+                        }
                         return;
                       }
 
@@ -852,7 +899,11 @@ export default function CheckoutPage() {
                       }
                     }
 
-                    if (!borrowedViaFallback && loans.length === 0 && !consumedByBackend) {
+                    if (
+                      !borrowedViaFallback &&
+                      loans.length === 0 &&
+                      !consumedByBackend
+                    ) {
                       toast.error(
                         lastMessage ??
                           "Borrow berhasil dipanggil, tapi tidak ada loan yang dibuat. Periksa payload itemIds/cartItemIds.",
