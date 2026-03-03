@@ -189,6 +189,9 @@ export default function BookListPage() {
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
 
+  const qParam = (searchParams.get("q") ?? "").trim();
+  const openSearchParam = (searchParams.get("openSearch") ?? "").trim();
+
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -214,9 +217,6 @@ export default function BookListPage() {
       : "/book-list";
     router.replace(url);
   }, [debouncedDesktopSearchValue, qParam, router]);
-
-  const qParam = (searchParams.get("q") ?? "").trim();
-  const openSearchParam = (searchParams.get("openSearch") ?? "").trim();
 
   useEffect(() => {
     if (openSearchParam !== "1") return;
@@ -246,6 +246,12 @@ export default function BookListPage() {
     const t = window.setTimeout(() => setDrawerOpen(false), 0);
     drawerInitialFetchRef.current = { key: drawerScopeKey, done: false };
     return () => window.clearTimeout(t);
+  }, [drawerScopeKey]);
+
+  const [desktopVisibleCount, setDesktopVisibleCount] = useState(8);
+
+  useEffect(() => {
+    setDesktopVisibleCount(8);
   }, [drawerScopeKey]);
 
   const token = useAppSelector((s) => s.auth.token);
@@ -286,10 +292,15 @@ export default function BookListPage() {
   const applyRatingFilter = <T extends { rating?: unknown }>(books: T[]) => {
     if (typeof selectedRating !== "number") return books;
     return books.filter((book) => {
+      const raw = book.rating;
       const value =
-        typeof book.rating === "number" ? book.rating : Number(book.rating);
+        raw === null || raw === undefined || raw === ""
+          ? 0
+          : typeof raw === "number"
+            ? raw
+            : Number(raw);
       if (!Number.isFinite(value)) return false;
-      return value >= selectedRating;
+      return value <= selectedRating;
     });
   };
 
@@ -298,6 +309,14 @@ export default function BookListPage() {
   const extraBooks = applyRatingFilter(
     pages.length <= 1 ? [] : pages.slice(1).flatMap((p) => p.books ?? []),
   );
+
+  const desktopAllBooks = [...firstBooks, ...extraBooks];
+  const desktopBooksToRender = desktopAllBooks.slice(0, desktopVisibleCount);
+  const desktopHasMoreThanEight =
+    desktopAllBooks.length > 8 || booksQuery.hasNextPage;
+  const desktopCanLoadMore =
+    desktopHasMoreThanEight &&
+    (desktopVisibleCount < desktopAllBooks.length || booksQuery.hasNextPage);
 
   const ensureDrawerHasNextPage = () => {
     if (drawerInitialFetchRef.current.key !== drawerScopeKey) {
@@ -912,7 +931,7 @@ export default function BookListPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-4 gap-xl">
-                    {firstBooks.map((book) => {
+                    {desktopBooksToRender.map((book) => {
                       const cover =
                         toAbsoluteAssetUrl(book.coverImage) ??
                         "/Home/image4.svg";
@@ -965,6 +984,36 @@ export default function BookListPage() {
                     })}
                   </div>
                 )}
+
+                {desktopCanLoadMore ? (
+                  <div className="mt-3xl flex justify-center">
+                    <button
+                      type="button"
+                      disabled={booksQuery.isFetchingNextPage}
+                      onClick={async () => {
+                        const nextCount = desktopVisibleCount + 8;
+                        setDesktopVisibleCount(nextCount);
+
+                        if (
+                          booksQuery.hasNextPage &&
+                          desktopAllBooks.length < nextCount &&
+                          !booksQuery.isFetchingNextPage
+                        ) {
+                          try {
+                            await booksQuery.fetchNextPage();
+                          } catch {
+                            // ignore
+                          }
+                        }
+                      }}
+                      className="h-auto rounded-full border border-neutral-300 bg-base-white px-4xl py-sm text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 disabled:opacity-50"
+                    >
+                      {booksQuery.isFetchingNextPage
+                        ? "Loading..."
+                        : "Load more"}
+                    </button>
+                  </div>
+                ) : null}
               </section>
             </div>
 
