@@ -7,7 +7,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 
 import { useAppSelector } from "@/app/store/hooks";
-import { PageHeader } from "@/components/Header";
+import { DesktopHeader, PageHeader } from "@/components/Header";
 import { meApiWithToken } from "@/features/auth/authApi";
 import { getBookByIdApi } from "@/features/books/booksApi";
 import { useCategories } from "@/features/categories/categoriesHooks";
@@ -221,9 +221,69 @@ function Footer() {
   );
 }
 
+function DesktopFooter() {
+  return (
+    <footer className="py-6xl text-center">
+      <div className="flex items-center justify-center gap-lg">
+        <Image
+          src="/Login-Page/Logo.svg"
+          alt="Booky logo"
+          width={33}
+          height={33}
+          className="h-8.25 w-8.25"
+        />
+        <div className="font-sans text-[25.14px] font-bold leading-8.25 tracking-normal text-neutral-950">
+          Booky
+        </div>
+      </div>
+
+      <p className="mx-auto mt-lg w-full max-w-160 text-text-sm font-medium leading-6 text-neutral-600">
+        Discover inspiring stories & timeless knowledge, ready to borrow
+        anytime. Explore online or visit our nearest library branch.
+      </p>
+
+      <div className="mt-5xl text-text-sm font-semibold text-neutral-950">
+        Follow on Social Media
+      </div>
+
+      <div className="mt-xl flex items-center justify-center gap-md">
+        <button
+          type="button"
+          aria-label="Facebook"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white"
+        >
+          <Image src="/Home/Facebook.svg" alt="" width={16} height={16} />
+        </button>
+        <button
+          type="button"
+          aria-label="Instagram"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white"
+        >
+          <Image src="/Home/Instagram.svg" alt="" width={16} height={16} />
+        </button>
+        <button
+          type="button"
+          aria-label="LinkedIn"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white"
+        >
+          <Image src="/Home/Linkedln.svg" alt="" width={16} height={16} />
+        </button>
+        <button
+          type="button"
+          aria-label="TikTok"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white"
+        >
+          <Image src="/Home/TIKTOK.svg" alt="" width={16} height={16} />
+        </button>
+      </div>
+    </footer>
+  );
+}
+
 export default function ReviewsPage() {
   const router = useRouter();
 
+  const [desktopSearchValue, setDesktopSearchValue] = useState("");
   const [search, setSearch] = useState("");
 
   const token = useAppSelector((s) => s.auth.token);
@@ -330,207 +390,428 @@ export default function ReviewsPage() {
 
   if (!token) {
     return (
-      <div className="min-h-dvh bg-neutral-50 px-xl">
-        <div className="mx-auto w-full max-w-96 pt-xl">
-          <div className="h-10 w-40 rounded-xl bg-neutral-100" />
-          <div className="mt-3xl h-64 rounded-3xl bg-neutral-100" />
+      <div className="min-h-dvh bg-neutral-50">
+        <div className="md:hidden px-xl">
+          <div className="mx-auto w-full max-w-96 pt-xl">
+            <div className="h-10 w-40 rounded-xl bg-neutral-100" />
+            <div className="mt-3xl h-64 rounded-3xl bg-neutral-100" />
+          </div>
+        </div>
+
+        <div className="hidden md:block px-6xl">
+          <div className="mx-auto w-full max-w-300 pt-6xl">
+            <div className="h-12 w-64 rounded-xl bg-neutral-100" />
+            <div className="mt-4xl h-80 rounded-3xl bg-neutral-100" />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-dvh bg-neutral-50 px-xl">
-      <div className="mx-auto w-full max-w-96">
-        <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
-          <PageHeader
-            onLogoClick={() => router.push("/")}
-            onSearchClick={() => router.push("/book-list?openSearch=1")}
-            onBagClick={() => router.push("/cart")}
-            cartItemCount={cartItemCount}
-            profilePhotoSrc={profilePhotoSrc}
-            profileAlt={meUser?.name ? `${meUser.name} avatar` : "User avatar"}
-            avatarUnoptimized={avatarUnoptimized}
-            onProfileClick={() => router.push("/profile")}
-          />
+    <div className="min-h-dvh bg-neutral-50">
+      {/* Mobile layout (default) */}
+      <div className="md:hidden px-xl">
+        <div className="mx-auto w-full max-w-96">
+          <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
+            <PageHeader
+              onLogoClick={() => router.push("/")}
+              onSearchClick={() => router.push("/book-list?openSearch=1")}
+              onBagClick={() => router.push("/cart")}
+              cartItemCount={cartItemCount}
+              profilePhotoSrc={profilePhotoSrc}
+              profileAlt={
+                meUser?.name ? `${meUser.name} avatar` : "User avatar"
+              }
+              avatarUnoptimized={avatarUnoptimized}
+              onProfileClick={() => router.push("/profile")}
+            />
 
-          <div className="mt-2xl rounded-full bg-neutral-100 p-xs">
-            <div className="grid grid-cols-3 gap-xs">
-              <button
-                type="button"
-                onClick={() => router.push("/profile")}
-                className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
-              >
-                Profile
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/borrowed-list")}
-                className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
-              >
-                Borrowed List
-              </button>
-              <button
-                type="button"
-                className="h-9 rounded-full bg-base-white text-text-xs font-semibold tracking-[-0.02em] text-neutral-950"
-                aria-current="page"
-              >
-                Reviews
-              </button>
+            <div className="mt-2xl rounded-full bg-neutral-100 p-xs">
+              <div className="grid grid-cols-3 gap-xs">
+                <button
+                  type="button"
+                  onClick={() => router.push("/profile")}
+                  className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
+                >
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/borrowed-list")}
+                  className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
+                >
+                  Borrowed List
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-full bg-base-white text-text-xs font-semibold tracking-[-0.02em] text-neutral-950"
+                  aria-current="page"
+                >
+                  Reviews
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <main className="pt-3xl">
-          <div className="text-display-xs font-bold tracking-[-0.02em] text-neutral-950">
-            Reviews
-          </div>
+          <main className="pt-3xl">
+            <div className="text-display-xs font-bold tracking-[-0.02em] text-neutral-950">
+              Reviews
+            </div>
 
-          <div className="mt-xl">
-            <div className="relative">
-              <div className="pointer-events-none absolute left-lg top-1/2 -translate-y-1/2">
-                <Image
-                  src="/Home/SearchMute.svg"
-                  alt=""
-                  width={18}
-                  height={18}
-                  className="h-4.5 w-4.5"
+            <div className="mt-xl">
+              <div className="relative">
+                <div className="pointer-events-none absolute left-lg top-1/2 -translate-y-1/2">
+                  <Image
+                    src="/Home/SearchMute.svg"
+                    alt=""
+                    width={18}
+                    height={18}
+                    className="h-4.5 w-4.5"
+                  />
+                </div>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search book"
+                  className="h-11 w-full rounded-full border border-neutral-200 bg-base-white pl-10 pr-xl text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 placeholder:text-neutral-400"
+                  aria-label="Search book"
                 />
               </div>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search book"
-                className="h-11 w-full rounded-full border border-neutral-200 bg-base-white pl-10 pr-xl text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 placeholder:text-neutral-400"
-                aria-label="Search book"
-              />
+            </div>
+
+            <div className="mt-2xl space-y-2xl">
+              {myReviewsQuery.isLoading ? (
+                <div className="space-y-xl">
+                  <div className="h-48 rounded-3xl bg-neutral-100" />
+                  <div className="h-48 rounded-3xl bg-neutral-100" />
+                </div>
+              ) : visibleReviews.length === 0 ? (
+                <div className="rounded-3xl bg-base-white px-2xl py-3xl text-center text-text-sm font-semibold tracking-[-0.02em] text-neutral-500">
+                  No reviews found.
+                </div>
+              ) : (
+                visibleReviews.map((review) => {
+                  const dateLabel = formatReviewDateTime(review.createdAt);
+                  const book =
+                    typeof review.bookId === "number"
+                      ? bookById.get(review.bookId)
+                      : null;
+
+                  const bookRecord = book && isRecord(book) ? book : null;
+                  const title = bookRecord
+                    ? asString(bookRecord.title)
+                    : "Book";
+                  const authorName =
+                    bookRecord && isRecord(bookRecord.author)
+                      ? asString(
+                          (bookRecord.author as Record<string, unknown>).name,
+                        )
+                      : "Author name";
+
+                  const coverSrc =
+                    toAbsoluteAssetUrl(
+                      bookRecord && typeof bookRecord.coverImage === "string"
+                        ? bookRecord.coverImage
+                        : null,
+                    ) ?? "/Home/image4.svg";
+
+                  const coverUnoptimized =
+                    coverSrc.startsWith("data:") ||
+                    coverSrc.startsWith("blob:");
+
+                  const categoryNameFromObj =
+                    bookRecord && isRecord(bookRecord.category)
+                      ? asString(
+                          (bookRecord.category as Record<string, unknown>).name,
+                        )
+                      : "";
+
+                  const categoryIdRaw = bookRecord
+                    ? (bookRecord.categoryId ??
+                      (isRecord(bookRecord.category)
+                        ? (bookRecord.category as Record<string, unknown>).id
+                        : null))
+                    : null;
+
+                  const categoryId =
+                    typeof categoryIdRaw === "string" ||
+                    typeof categoryIdRaw === "number"
+                      ? String(categoryIdRaw)
+                      : null;
+
+                  const categoryName =
+                    categoryNameFromObj ||
+                    (categoryId
+                      ? (categoryNameById.get(categoryId) ?? "")
+                      : "") ||
+                    "Category";
+
+                  return (
+                    <div
+                      key={review.key}
+                      className="rounded-3xl bg-base-white px-2xl py-2xl"
+                    >
+                      <div className="text-text-2xs font-semibold tracking-[-0.02em] text-neutral-500">
+                        {dateLabel}
+                      </div>
+
+                      <div className="mt-xl flex gap-xl">
+                        <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-neutral-100">
+                          <Image
+                            src={coverSrc}
+                            alt={title}
+                            fill
+                            sizes="80px"
+                            className="object-cover"
+                            unoptimized={coverUnoptimized}
+                          />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="inline-flex items-center rounded-full border border-neutral-200 bg-base-white px-md py-0.5 text-text-2xs font-semibold tracking-[-0.02em] text-neutral-600">
+                            {categoryName}
+                          </div>
+
+                          <div className="mt-md text-text-xs font-semibold tracking-[-0.02em] text-neutral-500">
+                            Book Name
+                          </div>
+                          <div className="mt-2xs truncate text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
+                            {title || "-"}
+                          </div>
+                          <div className="mt-2xs truncate text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
+                            {authorName || "-"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-xl">
+                        <StarsRow star={review.star} />
+                      </div>
+
+                      <p className="mt-lg text-text-xs font-medium leading-6 tracking-[-0.02em] text-neutral-600">
+                        {review.comment || "-"}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div
+              className="mt-7xl h-px w-screen bg-neutral-200 relative left-1/2 -translate-x-1/2"
+              aria-hidden="true"
+            />
+
+            <div className="pt-6xl">
+              <Footer />
+            </div>
+          </main>
+        </div>
+      </div>
+
+      {/* Desktop layout (md+) */}
+      <div className="hidden md:block px-6xl">
+        <div className="mx-auto w-full max-w-300">
+          <DesktopHeader
+            onLogoClick={() => router.push("/home")}
+            onBagClick={() => router.push("/cart")}
+            cartItemCount={cartItemCount}
+            searchValue={desktopSearchValue}
+            onSearchValueChange={setDesktopSearchValue}
+            onSearchSubmit={(q) => {
+              const url = q
+                ? `/book-list?q=${encodeURIComponent(q)}`
+                : "/book-list";
+              setDesktopSearchValue("");
+              router.push(url);
+            }}
+            profilePhotoSrc={profilePhotoSrc}
+            profileAlt={meUser?.name ? `${meUser.name} avatar` : "User"}
+            avatarUnoptimized={avatarUnoptimized}
+            userName={meUser?.name ?? "User"}
+          />
+
+          <div className="mt-2xl flex justify-center">
+            <div className="w-full max-w-120 rounded-full bg-neutral-100 p-xs">
+              <div className="grid grid-cols-3 gap-xs">
+                <button
+                  type="button"
+                  onClick={() => router.push("/profile")}
+                  className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
+                >
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/borrowed-list")}
+                  className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
+                >
+                  Borrowed List
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-full bg-base-white text-text-xs font-semibold tracking-[-0.02em] text-neutral-950"
+                  aria-current="page"
+                >
+                  Reviews
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="mt-2xl space-y-2xl">
-            {myReviewsQuery.isLoading ? (
-              <div className="space-y-xl">
-                <div className="h-48 rounded-3xl bg-neutral-100" />
-                <div className="h-48 rounded-3xl bg-neutral-100" />
-              </div>
-            ) : visibleReviews.length === 0 ? (
-              <div className="rounded-3xl bg-base-white px-2xl py-3xl text-center text-text-sm font-semibold tracking-[-0.02em] text-neutral-500">
-                No reviews found.
-              </div>
-            ) : (
-              visibleReviews.map((review) => {
-                const dateLabel = formatReviewDateTime(review.createdAt);
-                const book =
-                  typeof review.bookId === "number"
-                    ? bookById.get(review.bookId)
-                    : null;
+          <main className="pt-4xl pb-6xl">
+            <div className="mx-auto w-full max-w-160">
+              <h1 className="text-display-sm font-bold tracking-[-0.02em] text-neutral-950">
+                Reviews
+              </h1>
 
-                const bookRecord = book && isRecord(book) ? book : null;
-                const title = bookRecord ? asString(bookRecord.title) : "Book";
-                const authorName =
-                  bookRecord && isRecord(bookRecord.author)
-                    ? asString(
-                        (bookRecord.author as Record<string, unknown>).name,
-                      )
-                    : "Author name";
-
-                const coverSrc =
-                  toAbsoluteAssetUrl(
-                    bookRecord && typeof bookRecord.coverImage === "string"
-                      ? bookRecord.coverImage
-                      : null,
-                  ) ?? "/Home/image4.svg";
-
-                const coverUnoptimized =
-                  coverSrc.startsWith("data:") || coverSrc.startsWith("blob:");
-
-                const categoryNameFromObj =
-                  bookRecord && isRecord(bookRecord.category)
-                    ? asString(
-                        (bookRecord.category as Record<string, unknown>).name,
-                      )
-                    : "";
-
-                const categoryIdRaw = bookRecord
-                  ? (bookRecord.categoryId ??
-                    (isRecord(bookRecord.category)
-                      ? (bookRecord.category as Record<string, unknown>).id
-                      : null))
-                  : null;
-
-                const categoryId =
-                  typeof categoryIdRaw === "string" ||
-                  typeof categoryIdRaw === "number"
-                    ? String(categoryIdRaw)
-                    : null;
-
-                const categoryName =
-                  categoryNameFromObj ||
-                  (categoryId
-                    ? (categoryNameById.get(categoryId) ?? "")
-                    : "") ||
-                  "Category";
-
-                return (
-                  <div
-                    key={review.key}
-                    className="rounded-3xl bg-base-white px-2xl py-2xl"
-                  >
-                    <div className="text-text-2xs font-semibold tracking-[-0.02em] text-neutral-500">
-                      {dateLabel}
-                    </div>
-
-                    <div className="mt-xl flex gap-xl">
-                      <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-neutral-100">
-                        <Image
-                          src={coverSrc}
-                          alt={title}
-                          fill
-                          sizes="80px"
-                          className="object-cover"
-                          unoptimized={coverUnoptimized}
-                        />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="inline-flex items-center rounded-full border border-neutral-200 bg-base-white px-md py-0.5 text-text-2xs font-semibold tracking-[-0.02em] text-neutral-600">
-                          {categoryName}
-                        </div>
-
-                        <div className="mt-md text-text-xs font-semibold tracking-[-0.02em] text-neutral-500">
-                          Book Name
-                        </div>
-                        <div className="mt-2xs truncate text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
-                          {title || "-"}
-                        </div>
-                        <div className="mt-2xs truncate text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
-                          {authorName || "-"}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-xl">
-                      <StarsRow star={review.star} />
-                    </div>
-
-                    <p className="mt-lg text-text-xs font-medium leading-6 tracking-[-0.02em] text-neutral-600">
-                      {review.comment || "-"}
-                    </p>
+              <div className="mt-2xl w-full max-w-120">
+                <div className="relative">
+                  <div className="pointer-events-none absolute left-lg top-1/2 -translate-y-1/2">
+                    <Image
+                      src="/Home/SearchMute.svg"
+                      alt=""
+                      width={18}
+                      height={18}
+                      className="h-4.5 w-4.5"
+                    />
                   </div>
-                );
-              })
-            )}
-          </div>
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search Reviews"
+                    className="h-11 w-full rounded-full border border-neutral-200 bg-base-white pl-10 pr-xl text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 placeholder:text-neutral-400"
+                    aria-label="Search Reviews"
+                  />
+                </div>
+              </div>
 
-          <div
-            className="mt-7xl h-px w-screen bg-neutral-200 relative left-1/2 -translate-x-1/2"
-            aria-hidden="true"
-          />
+              <div className="mt-4xl space-y-3xl">
+                {myReviewsQuery.isLoading ? (
+                  <div className="space-y-3xl">
+                    <div className="h-56 rounded-3xl bg-neutral-100" />
+                    <div className="h-56 rounded-3xl bg-neutral-100" />
+                    <div className="h-56 rounded-3xl bg-neutral-100" />
+                  </div>
+                ) : visibleReviews.length === 0 ? (
+                  <div className="rounded-3xl border border-neutral-200 bg-base-white px-4xl py-3xl text-center text-text-sm font-semibold tracking-[-0.02em] text-neutral-500">
+                    No reviews found.
+                  </div>
+                ) : (
+                  visibleReviews.map((review) => {
+                    const dateLabel = formatReviewDateTime(review.createdAt);
+                    const book =
+                      typeof review.bookId === "number"
+                        ? bookById.get(review.bookId)
+                        : null;
 
-          <div className="pt-6xl">
-            <Footer />
-          </div>
-        </main>
+                    const bookRecord = book && isRecord(book) ? book : null;
+                    const title = bookRecord
+                      ? asString(bookRecord.title)
+                      : "Book";
+                    const authorName =
+                      bookRecord && isRecord(bookRecord.author)
+                        ? asString(
+                            (bookRecord.author as Record<string, unknown>).name,
+                          )
+                        : "Author name";
+
+                    const coverSrc =
+                      toAbsoluteAssetUrl(
+                        bookRecord && typeof bookRecord.coverImage === "string"
+                          ? bookRecord.coverImage
+                          : null,
+                      ) ?? "/Home/image4.svg";
+
+                    const coverUnoptimized =
+                      coverSrc.startsWith("data:") ||
+                      coverSrc.startsWith("blob:");
+
+                    const categoryNameFromObj =
+                      bookRecord && isRecord(bookRecord.category)
+                        ? asString(
+                            (bookRecord.category as Record<string, unknown>)
+                              .name,
+                          )
+                        : "";
+
+                    const categoryIdRaw = bookRecord
+                      ? (bookRecord.categoryId ??
+                        (isRecord(bookRecord.category)
+                          ? (bookRecord.category as Record<string, unknown>).id
+                          : null))
+                      : null;
+
+                    const categoryId =
+                      typeof categoryIdRaw === "string" ||
+                      typeof categoryIdRaw === "number"
+                        ? String(categoryIdRaw)
+                        : null;
+
+                    const categoryName =
+                      categoryNameFromObj ||
+                      (categoryId
+                        ? (categoryNameById.get(categoryId) ?? "")
+                        : "") ||
+                      "Category";
+
+                    return (
+                      <article
+                        key={review.key}
+                        className="rounded-3xl border border-neutral-200 bg-base-white px-4xl py-3xl"
+                      >
+                        <div className="text-text-2xs font-semibold tracking-[-0.02em] text-neutral-500">
+                          {dateLabel}
+                        </div>
+
+                        <div className="mt-xl flex gap-xl border-b border-neutral-100 pb-xl">
+                          <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-neutral-100">
+                            <Image
+                              src={coverSrc}
+                              alt={title}
+                              fill
+                              sizes="80px"
+                              className="object-cover"
+                              unoptimized={coverUnoptimized}
+                            />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="inline-flex items-center rounded-full border border-neutral-200 bg-base-white px-md py-0.5 text-text-2xs font-semibold tracking-[-0.02em] text-neutral-600">
+                              {categoryName}
+                            </div>
+
+                            <div className="mt-md text-text-xs font-semibold tracking-[-0.02em] text-neutral-500">
+                              Book Name
+                            </div>
+                            <div className="mt-2xs truncate text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
+                              {title || "-"}
+                            </div>
+                            <div className="mt-2xs truncate text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
+                              {authorName || "-"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-xl">
+                          <StarsRow star={review.star} />
+                        </div>
+
+                        <p className="mt-lg text-text-xs font-medium leading-6 tracking-[-0.02em] text-neutral-600">
+                          {review.comment || "-"}
+                        </p>
+                      </article>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="mt-7xl h-px w-full bg-neutral-200" aria-hidden />
+              <DesktopFooter />
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );

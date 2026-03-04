@@ -21,7 +21,7 @@ import { getErrorMessage } from "@/shared/api/errors";
 import { http } from "@/shared/api/http";
 import { useDebounce } from "@/shared/lib/useDebounce";
 import { useAuthedImageUrl } from "@/shared/lib/useAuthedImageUrl";
-import { PageHeader } from "@/components/Header";
+import { DesktopHeader, PageHeader } from "@/components/Header";
 
 const BACKEND_BASE = "https://library-backend-production-b9cf.up.railway.app";
 
@@ -415,9 +415,70 @@ function Footer() {
   );
 }
 
+function DesktopFooter() {
+  return (
+    <footer className="py-6xl text-center">
+      <div className="flex items-center justify-center gap-lg">
+        <Image
+          src="/Login-Page/Logo.svg"
+          alt="Booky logo"
+          width={33}
+          height={33}
+          className="h-8.25 w-8.25"
+        />
+        <div className="font-sans text-[25.14px] font-bold leading-8.25 tracking-normal text-neutral-950">
+          Booky
+        </div>
+      </div>
+
+      <p className="mx-auto mt-lg w-full max-w-160 text-text-sm font-medium leading-6 text-neutral-600">
+        Discover inspiring stories & timeless knowledge, ready to borrow
+        anytime. Explore online or visit our nearest library branch.
+      </p>
+
+      <div className="mt-5xl text-text-sm font-semibold text-neutral-950">
+        Follow on Social Media
+      </div>
+
+      <div className="mt-xl flex items-center justify-center gap-md">
+        <button
+          type="button"
+          aria-label="Facebook"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white"
+        >
+          <Image src="/Home/Facebook.svg" alt="" width={16} height={16} />
+        </button>
+        <button
+          type="button"
+          aria-label="Instagram"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white"
+        >
+          <Image src="/Home/Instagram.svg" alt="" width={16} height={16} />
+        </button>
+        <button
+          type="button"
+          aria-label="LinkedIn"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white"
+        >
+          <Image src="/Home/Linkedln.svg" alt="" width={16} height={16} />
+        </button>
+        <button
+          type="button"
+          aria-label="TikTok"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-base-white"
+        >
+          <Image src="/Home/TIKTOK.svg" alt="" width={16} height={16} />
+        </button>
+      </div>
+    </footer>
+  );
+}
+
 export default function BorrowedListPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  const [desktopSearchValue, setDesktopSearchValue] = useState("");
 
   const noCacheHeaders = useMemo(() => {
     return {
@@ -1050,209 +1111,185 @@ export default function BorrowedListPage() {
 
   if (!token) {
     return (
-      <div className="min-h-dvh bg-neutral-50 px-xl">
-        <div className="mx-auto w-full max-w-96 pt-xl">
-          <div className="h-10 w-40 rounded-xl bg-neutral-100" />
-          <div className="mt-3xl h-64 rounded-3xl bg-neutral-100" />
+      <div className="min-h-dvh bg-neutral-50">
+        <div className="md:hidden px-xl">
+          <div className="mx-auto w-full max-w-96 pt-xl">
+            <div className="h-10 w-40 rounded-xl bg-neutral-100" />
+            <div className="mt-3xl h-64 rounded-3xl bg-neutral-100" />
+          </div>
+        </div>
+
+        <div className="hidden md:block px-6xl">
+          <div className="mx-auto w-full max-w-300 pt-6xl">
+            <div className="h-12 w-64 rounded-xl bg-neutral-100" />
+            <div className="mt-4xl h-80 rounded-3xl bg-neutral-100" />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-dvh bg-neutral-50 px-xl">
-      <div className="mx-auto w-full max-w-96">
-        <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
-          <PageHeader
-            onLogoClick={() => router.push("/")}
-            onBagClick={() => router.push("/cart")}
-            cartItemCount={cartItemCount}
-            profilePhotoSrc={profilePhotoSrc}
-            profileAlt={meUser?.name ? `${meUser.name} avatar` : "User avatar"}
-            avatarUnoptimized={avatarUnoptimized}
-            onProfileClick={() => router.push("/profile")}
-          />
+    <div className="min-h-dvh bg-neutral-50">
+      {/* Mobile layout (default) */}
+      <div className="md:hidden px-xl">
+        <div className="mx-auto w-full max-w-96">
+          <div className="sticky top-0 z-40 bg-neutral-50 pt-xl">
+            <PageHeader
+              onLogoClick={() => router.push("/")}
+              onBagClick={() => router.push("/cart")}
+              cartItemCount={cartItemCount}
+              profilePhotoSrc={profilePhotoSrc}
+              profileAlt={
+                meUser?.name ? `${meUser.name} avatar` : "User avatar"
+              }
+              avatarUnoptimized={avatarUnoptimized}
+              onProfileClick={() => router.push("/profile")}
+            />
 
-          <div className="mt-2xl rounded-full bg-neutral-100 p-xs">
-            <div className="grid grid-cols-3 gap-xs">
-              <button
-                type="button"
-                onClick={() => router.push("/profile")}
-                className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
-              >
-                Profile
-              </button>
-              <button
-                type="button"
-                className="h-9 rounded-full bg-base-white text-text-xs font-semibold tracking-[-0.02em] text-neutral-950"
-                aria-current="page"
-              >
-                Borrowed List
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  router.push("/reviews");
-                }}
-                className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
-              >
-                Reviews
-              </button>
+            <div className="mt-2xl rounded-full bg-neutral-100 p-xs">
+              <div className="grid grid-cols-3 gap-xs">
+                <button
+                  type="button"
+                  onClick={() => router.push("/profile")}
+                  className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
+                >
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-full bg-base-white text-text-xs font-semibold tracking-[-0.02em] text-neutral-950"
+                  aria-current="page"
+                >
+                  Borrowed List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    router.push("/reviews");
+                  }}
+                  className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
+                >
+                  Reviews
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <main className="pt-3xl">
-          <div className="text-display-xs font-bold tracking-[-0.02em] text-neutral-950">
-            Borrowed List
-          </div>
+          <main className="pt-3xl">
+            <div className="text-display-xs font-bold tracking-[-0.02em] text-neutral-950">
+              Borrowed List
+            </div>
 
-          <div className="mt-xl">
-            <div className="relative">
-              <div className="pointer-events-none absolute left-lg top-1/2 -translate-y-1/2">
-                <Image
-                  src="/Home/SearchMute.svg"
-                  alt=""
-                  width={18}
-                  height={18}
-                  className="h-4.5 w-4.5"
+            <div className="mt-xl">
+              <div className="relative">
+                <div className="pointer-events-none absolute left-lg top-1/2 -translate-y-1/2">
+                  <Image
+                    src="/Home/SearchMute.svg"
+                    alt=""
+                    width={18}
+                    height={18}
+                    className="h-4.5 w-4.5"
+                  />
+                </div>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search book"
+                  className="h-11 w-full rounded-full border border-neutral-200 bg-base-white pl-10 pr-xl text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 placeholder:text-neutral-400"
+                  aria-label="Search book"
                 />
               </div>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search book"
-                className="h-11 w-full rounded-full border border-neutral-200 bg-base-white pl-10 pr-xl text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 placeholder:text-neutral-400"
-                aria-label="Search book"
-              />
             </div>
-          </div>
 
-          <div className="mt-xl flex items-center gap-sm">
-            {(
-              [
-                { key: "all", label: "All" },
-                { key: "active", label: "Active" },
-                { key: "returned", label: "Returned" },
-                { key: "overdue", label: "Overdue" },
-              ] as const
-            ).map((opt) => {
-              const selected = filter === opt.key;
-              return (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setFilter(opt.key)}
-                  className={
-                    selected
-                      ? "h-9 rounded-full border border-primary-600 bg-base-white px-xl text-text-xs font-semibold tracking-[-0.02em] text-primary-600"
-                      : "h-9 rounded-full border border-neutral-200 bg-base-white px-xl text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
-                  }
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-2xl space-y-2xl">
-            {loansQuery.isLoading ? (
-              <div className="space-y-xl">
-                <div className="h-40 rounded-3xl bg-neutral-100" />
-                <div className="h-40 rounded-3xl bg-neutral-100" />
-              </div>
-            ) : visibleLoans.length === 0 ? (
-              <div className="rounded-3xl bg-base-white px-2xl py-3xl text-center text-text-sm font-semibold tracking-[-0.02em] text-neutral-500">
-                No borrowed books found.
-              </div>
-            ) : (
-              visibleLoans.map((loan) => {
-                const dueLabel = loan.dueAt ? formatLongDate(loan.dueAt) : "-";
-                const borrowedLabel = loan.borrowedAt
-                  ? formatLongDate(loan.borrowedAt)
-                  : "-";
-                const durationLabel =
-                  loan.durationDays === null
-                    ? "Duration -"
-                    : `Duration ${loan.durationDays} Days`;
-
-                const coverSrc =
-                  toAbsoluteAssetUrl(loan.coverImage) ?? "/Home/image4.svg";
-                const coverUnoptimized =
-                  coverSrc.startsWith("data:") || coverSrc.startsWith("blob:");
-
-                const bookDetailHref =
-                  typeof loan.bookId === "number"
-                    ? `/books/${loan.bookId}`
-                    : null;
-
+            <div className="mt-xl flex items-center gap-sm">
+              {(
+                [
+                  { key: "all", label: "All" },
+                  { key: "active", label: "Active" },
+                  { key: "returned", label: "Returned" },
+                  { key: "overdue", label: "Overdue" },
+                ] as const
+              ).map((opt) => {
+                const selected = filter === opt.key;
                 return (
-                  <div
-                    key={loan.key}
-                    className="rounded-3xl bg-base-white px-2xl py-2xl"
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setFilter(opt.key)}
+                    className={
+                      selected
+                        ? "h-9 rounded-full border border-primary-600 bg-base-white px-xl text-text-xs font-semibold tracking-[-0.02em] text-primary-600"
+                        : "h-9 rounded-full border border-neutral-200 bg-base-white px-xl text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
+                    }
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
-                        Status{" "}
-                        <span
-                          className={`ml-sm inline-flex items-center rounded-full px-md py-0.5 text-text-xs font-bold tracking-[-0.02em] ${statusBadgeClasses(loan.status)}`}
-                        >
-                          {statusLabel(loan.status)}
-                        </span>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-2xl space-y-2xl">
+              {loansQuery.isLoading ? (
+                <div className="space-y-xl">
+                  <div className="h-40 rounded-3xl bg-neutral-100" />
+                  <div className="h-40 rounded-3xl bg-neutral-100" />
+                </div>
+              ) : visibleLoans.length === 0 ? (
+                <div className="rounded-3xl bg-base-white px-2xl py-3xl text-center text-text-sm font-semibold tracking-[-0.02em] text-neutral-500">
+                  No borrowed books found.
+                </div>
+              ) : (
+                visibleLoans.map((loan) => {
+                  const dueLabel = loan.dueAt
+                    ? formatLongDate(loan.dueAt)
+                    : "-";
+                  const borrowedLabel = loan.borrowedAt
+                    ? formatLongDate(loan.borrowedAt)
+                    : "-";
+                  const durationLabel =
+                    loan.durationDays === null
+                      ? "Duration -"
+                      : `Duration ${loan.durationDays} Days`;
+
+                  const coverSrc =
+                    toAbsoluteAssetUrl(loan.coverImage) ?? "/Home/image4.svg";
+                  const coverUnoptimized =
+                    coverSrc.startsWith("data:") ||
+                    coverSrc.startsWith("blob:");
+
+                  const bookDetailHref =
+                    typeof loan.bookId === "number"
+                      ? `/books/${loan.bookId}`
+                      : null;
+
+                  return (
+                    <div
+                      key={loan.key}
+                      className="rounded-3xl bg-base-white px-2xl py-2xl"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
+                          Status{" "}
+                          <span
+                            className={`ml-sm inline-flex items-center rounded-full px-md py-0.5 text-text-xs font-bold tracking-[-0.02em] ${statusBadgeClasses(loan.status)}`}
+                          >
+                            {statusLabel(loan.status)}
+                          </span>
+                        </div>
+
+                        <div className="text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
+                          Due Date{" "}
+                          <span className="ml-sm inline-flex items-center rounded-full bg-accent-red/10 px-md py-0.5 text-text-xs font-bold tracking-[-0.02em] text-accent-red">
+                            {dueLabel}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
-                        Due Date{" "}
-                        <span className="ml-sm inline-flex items-center rounded-full bg-accent-red/10 px-md py-0.5 text-text-xs font-bold tracking-[-0.02em] text-accent-red">
-                          {dueLabel}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-xl flex gap-xl">
-                      <button
-                        type="button"
-                        className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-neutral-100"
-                        onClick={() => {
-                          if (!bookDetailHref) {
-                            toast.error("Book tidak ditemukan.");
-                            return;
-                          }
-                          router.push(bookDetailHref);
-                        }}
-                        aria-label={
-                          bookDetailHref
-                            ? `Open details for ${loan.title}`
-                            : "Book not found"
-                        }
-                      >
-                        <Image
-                          src={coverSrc}
-                          alt={loan.title}
-                          fill
-                          sizes="80px"
-                          className="object-cover"
-                          unoptimized={coverUnoptimized}
-                        />
-                      </button>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="text-text-xs font-semibold tracking-[-0.02em] text-neutral-500">
-                          Category
-                        </div>
-                        <div className="mt-xs text-text-xs font-bold tracking-[-0.02em] text-neutral-950">
-                          {typeof loan.bookId === "number"
-                            ? (categoryNameByBookId.get(loan.bookId) ??
-                              loan.categoryName)
-                            : loan.categoryName}
-                        </div>
-
-                        <div className="mt-lg text-text-xs font-semibold tracking-[-0.02em] text-neutral-500">
-                          Book Name
-                        </div>
+                      <div className="mt-xl flex gap-xl">
                         <button
                           type="button"
-                          className="mt-xs block w-full truncate text-left text-text-sm font-bold tracking-[-0.02em] text-neutral-950"
+                          className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-neutral-100"
                           onClick={() => {
                             if (!bookDetailHref) {
                               toast.error("Book tidak ditemukan.");
@@ -1266,198 +1303,500 @@ export default function BorrowedListPage() {
                               : "Book not found"
                           }
                         >
-                          {loan.title}
+                          <Image
+                            src={coverSrc}
+                            alt={loan.title}
+                            fill
+                            sizes="80px"
+                            className="object-cover"
+                            unoptimized={coverUnoptimized}
+                          />
                         </button>
-                        <div className="mt-xs truncate text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
-                          {loan.authorName}
-                        </div>
 
-                        <div className="mt-lg flex items-center gap-sm text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
-                          <span>{borrowedLabel}</span>
-                          <span className="text-neutral-300">·</span>
-                          <span>{durationLabel}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-text-xs font-semibold tracking-[-0.02em] text-neutral-500">
+                            Category
+                          </div>
+                          <div className="mt-xs text-text-xs font-bold tracking-[-0.02em] text-neutral-950">
+                            {typeof loan.bookId === "number"
+                              ? (categoryNameByBookId.get(loan.bookId) ??
+                                loan.categoryName)
+                              : loan.categoryName}
+                          </div>
+
+                          <div className="mt-lg text-text-xs font-semibold tracking-[-0.02em] text-neutral-500">
+                            Book Name
+                          </div>
+                          <button
+                            type="button"
+                            className="mt-xs block w-full truncate text-left text-text-sm font-bold tracking-[-0.02em] text-neutral-950"
+                            onClick={() => {
+                              if (!bookDetailHref) {
+                                toast.error("Book tidak ditemukan.");
+                                return;
+                              }
+                              router.push(bookDetailHref);
+                            }}
+                            aria-label={
+                              bookDetailHref
+                                ? `Open details for ${loan.title}`
+                                : "Book not found"
+                            }
+                          >
+                            {loan.title}
+                          </button>
+                          <div className="mt-xs truncate text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
+                            {loan.authorName}
+                          </div>
+
+                          <div className="mt-lg flex items-center gap-sm text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
+                            <span>{borrowedLabel}</span>
+                            <span className="text-neutral-300">·</span>
+                            <span>{durationLabel}</span>
+                          </div>
                         </div>
                       </div>
+
+                      <button
+                        type="button"
+                        className="mt-xl h-11 w-full rounded-full bg-primary-600 px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white"
+                        onClick={() => {
+                          if (!token) {
+                            router.push("/login");
+                            return;
+                          }
+
+                          if (!loan.bookId) {
+                            toast.error("Book tidak ditemukan.");
+                            return;
+                          }
+
+                          setReviewModal({
+                            open: true,
+                            bookId: loan.bookId,
+                            star: 0,
+                            comment: "",
+                            pending: false,
+                          });
+                        }}
+                      >
+                        Give Review
+                      </button>
                     </div>
-
-                    <button
-                      type="button"
-                      className="mt-xl h-11 w-full rounded-full bg-primary-600 px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white"
-                      onClick={() => {
-                        if (!token) {
-                          router.push("/login");
-                          return;
-                        }
-
-                        if (!loan.bookId) {
-                          toast.error("Book tidak ditemukan.");
-                          return;
-                        }
-
-                        setReviewModal({
-                          open: true,
-                          bookId: loan.bookId,
-                          star: 0,
-                          comment: "",
-                          pending: false,
-                        });
-                      }}
-                    >
-                      Give Review
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {loansQuery.hasNextPage ? (
-            <button
-              type="button"
-              disabled={loansQuery.isFetchingNextPage}
-              onClick={() => loansQuery.fetchNextPage()}
-              className="mt-2xl h-11 w-full rounded-full border border-neutral-200 bg-base-white text-text-sm font-bold tracking-[-0.02em] text-neutral-950 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loansQuery.isFetchingNextPage ? "Loading..." : "Load More"}
-            </button>
-          ) : null}
-        </main>
-
-        {reviewModal.open && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-xl"
-            role="dialog"
-            aria-modal="true"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget && !reviewModal.pending) {
-                setReviewModal((prev) => ({ ...prev, open: false }));
-              }
-            }}
-          >
-            <Card className="w-full max-w-80 rounded-3xl border border-neutral-200 bg-base-white px-2xl py-2xl shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
-                  Give Review
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  disabled={reviewModal.pending}
-                  className="grid h-8 w-8 place-items-center rounded-full text-neutral-600 disabled:opacity-60"
-                  onClick={() =>
-                    setReviewModal((prev) => ({ ...prev, open: false }))
-                  }
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="mt-xl text-center text-text-xs font-semibold tracking-[-0.02em] text-neutral-700">
-                Give Rating
-              </div>
-
-              <div className="mt-md flex items-center justify-center gap-md">
-                {Array.from({ length: 5 }).map((_, idx) => {
-                  const value = idx + 1;
-                  const active = value <= reviewModal.star;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-label={`Rate ${value} star`}
-                      disabled={reviewModal.pending}
-                      className="grid h-8 w-8 place-items-center disabled:opacity-60"
-                      onClick={() =>
-                        setReviewModal((prev) => ({ ...prev, star: value }))
-                      }
-                    >
-                      <Image
-                        src={
-                          active
-                            ? "/User-Review/Star.svg"
-                            : "/User-Review/Star-mute.svg"
-                        }
-                        alt=""
-                        width={20}
-                        height={20}
-                        className="h-5 w-5"
-                      />
-                    </button>
                   );
-                })}
-              </div>
+                })
+              )}
+            </div>
 
-              <textarea
-                value={reviewModal.comment}
-                onChange={(e) =>
-                  setReviewModal((prev) => ({
-                    ...prev,
-                    comment: e.target.value,
-                  }))
-                }
-                placeholder="Please share your thoughts about this book"
-                className="mt-xl h-40 w-full resize-none rounded-3xl border border-neutral-200 bg-base-white px-xl py-xl text-text-xs font-medium tracking-[-0.02em] text-neutral-950 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-600/30"
-                disabled={reviewModal.pending}
-              />
-
+            {loansQuery.hasNextPage ? (
               <button
                 type="button"
-                disabled={reviewModal.pending}
-                className="mt-xl h-11 w-full rounded-full bg-primary-600 px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={async () => {
-                  if (!token) {
-                    router.push("/login");
-                    return;
-                  }
-
-                  if (!reviewModal.bookId) {
-                    toast.error("Book tidak ditemukan.");
-                    return;
-                  }
-
-                  if (reviewModal.star < 1 || reviewModal.star > 5) {
-                    toast.error("Silakan pilih rating bintang (1-5).");
-                    return;
-                  }
-
-                  setReviewModal((prev) => ({ ...prev, pending: true }));
-                  try {
-                    await http.post(
-                      "/api/reviews",
-                      {
-                        bookId: reviewModal.bookId,
-                        star: reviewModal.star,
-                        comment: reviewModal.comment.trim(),
-                      },
-                      {
-                        headers: token
-                          ? { Authorization: `Bearer ${token}` }
-                          : undefined,
-                      },
-                    );
-
-                    toast.success("Review berhasil dikirim.");
-                    setReviewModal({
-                      open: false,
-                      bookId: null,
-                      star: 0,
-                      comment: "",
-                      pending: false,
-                    });
-                  } catch (err) {
-                    toast.error(getErrorMessage(err));
-                    setReviewModal((prev) => ({ ...prev, pending: false }));
-                  }
-                }}
+                disabled={loansQuery.isFetchingNextPage}
+                onClick={() => loansQuery.fetchNextPage()}
+                className="mt-2xl h-11 w-full rounded-full border border-neutral-200 bg-base-white text-text-sm font-bold tracking-[-0.02em] text-neutral-950 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {reviewModal.pending ? "Sending..." : "Send"}
+                {loansQuery.isFetchingNextPage ? "Loading..." : "Load More"}
               </button>
-            </Card>
-          </div>
-        )}
+            ) : null}
+          </main>
 
-        <Footer />
+          <Footer />
+        </div>
       </div>
+
+      {/* Desktop layout (md+) */}
+      <div className="hidden md:block px-6xl">
+        <div className="mx-auto w-full max-w-300">
+          <DesktopHeader
+            onLogoClick={() => router.push("/home")}
+            onBagClick={() => router.push("/cart")}
+            cartItemCount={cartItemCount}
+            searchValue={desktopSearchValue}
+            onSearchValueChange={setDesktopSearchValue}
+            onSearchSubmit={(q) => {
+              const url = q
+                ? `/book-list?q=${encodeURIComponent(q)}`
+                : "/book-list";
+              setDesktopSearchValue("");
+              router.push(url);
+            }}
+            profilePhotoSrc={profilePhotoSrc}
+            profileAlt={meUser?.name ? `${meUser.name} avatar` : "User"}
+            avatarUnoptimized={avatarUnoptimized}
+            userName={meUser?.name ?? "User"}
+          />
+
+          <div className="mt-2xl flex justify-center">
+            <div className="w-full max-w-120 rounded-full bg-neutral-100 p-xs">
+              <div className="grid grid-cols-3 gap-xs">
+                <button
+                  type="button"
+                  onClick={() => router.push("/profile")}
+                  className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
+                >
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-full bg-base-white text-text-xs font-semibold tracking-[-0.02em] text-neutral-950"
+                  aria-current="page"
+                >
+                  Borrowed List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/reviews")}
+                  className="h-9 rounded-full text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
+                >
+                  Reviews
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <main className="pt-4xl pb-6xl">
+            <div className="text-display-xs font-bold tracking-[-0.02em] text-neutral-950">
+              Borrowed List
+            </div>
+
+            <div className="mt-xl">
+              <div className="relative w-full max-w-96">
+                <div className="pointer-events-none absolute left-lg top-1/2 -translate-y-1/2">
+                  <Image
+                    src="/Home/SearchMute.svg"
+                    alt=""
+                    width={18}
+                    height={18}
+                    className="h-4.5 w-4.5"
+                  />
+                </div>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search book"
+                  className="h-11 w-full rounded-full border border-neutral-200 bg-base-white pl-10 pr-xl text-text-sm font-semibold tracking-[-0.02em] text-neutral-950 placeholder:text-neutral-400"
+                  aria-label="Search book"
+                />
+              </div>
+            </div>
+
+            <div className="mt-xl flex items-center gap-sm">
+              {(
+                [
+                  { key: "all", label: "All" },
+                  { key: "active", label: "Active" },
+                  { key: "returned", label: "Returned" },
+                  { key: "overdue", label: "Overdue" },
+                ] as const
+              ).map((opt) => {
+                const selected = filter === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setFilter(opt.key)}
+                    className={
+                      selected
+                        ? "h-9 rounded-full border border-primary-600 bg-base-white px-xl text-text-xs font-semibold tracking-[-0.02em] text-primary-600"
+                        : "h-9 rounded-full border border-neutral-200 bg-base-white px-xl text-text-xs font-semibold tracking-[-0.02em] text-neutral-500"
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3xl space-y-3xl">
+              {loansQuery.isLoading ? (
+                <div className="space-y-2xl">
+                  <div className="h-44 rounded-3xl bg-neutral-100" />
+                  <div className="h-44 rounded-3xl bg-neutral-100" />
+                </div>
+              ) : visibleLoans.length === 0 ? (
+                <div className="rounded-3xl border border-neutral-200 bg-base-white px-4xl py-4xl text-center text-text-sm font-semibold tracking-[-0.02em] text-neutral-500">
+                  No borrowed books found.
+                </div>
+              ) : (
+                visibleLoans.map((loan) => {
+                  const dueLabel = loan.dueAt
+                    ? formatLongDate(loan.dueAt)
+                    : "-";
+                  const borrowedLabel = loan.borrowedAt
+                    ? formatLongDate(loan.borrowedAt)
+                    : "-";
+                  const durationLabel =
+                    loan.durationDays === null
+                      ? "Duration -"
+                      : `Duration ${loan.durationDays} Days`;
+
+                  const coverSrc =
+                    toAbsoluteAssetUrl(loan.coverImage) ?? "/Home/image4.svg";
+                  const coverUnoptimized =
+                    coverSrc.startsWith("data:") ||
+                    coverSrc.startsWith("blob:");
+
+                  const bookDetailHref =
+                    typeof loan.bookId === "number"
+                      ? `/books/${loan.bookId}`
+                      : null;
+
+                  const categoryPillLabel =
+                    typeof loan.bookId === "number"
+                      ? (categoryNameByBookId.get(loan.bookId) ??
+                        loan.categoryName)
+                      : loan.categoryName;
+
+                  return (
+                    <div
+                      key={loan.key}
+                      className="rounded-3xl border border-neutral-200 bg-base-white px-4xl py-3xl shadow-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
+                          Status{" "}
+                          <span
+                            className={`ml-sm inline-flex items-center rounded-full px-md py-0.5 text-text-xs font-bold tracking-[-0.02em] ${statusBadgeClasses(loan.status)}`}
+                          >
+                            {statusLabel(loan.status)}
+                          </span>
+                        </div>
+                        <div className="text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
+                          Due Date{" "}
+                          <span className="ml-sm inline-flex items-center rounded-full bg-accent-red/10 px-md py-0.5 text-text-xs font-bold tracking-[-0.02em] text-accent-red">
+                            {dueLabel}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-2xl flex items-center justify-between gap-6xl">
+                        <div className="flex min-w-0 items-center gap-2xl">
+                          <button
+                            type="button"
+                            className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-neutral-100"
+                            onClick={() => {
+                              if (!bookDetailHref) {
+                                toast.error("Book tidak ditemukan.");
+                                return;
+                              }
+                              router.push(bookDetailHref);
+                            }}
+                            aria-label={
+                              bookDetailHref
+                                ? `Open details for ${loan.title}`
+                                : "Book not found"
+                            }
+                          >
+                            <Image
+                              src={coverSrc}
+                              alt={loan.title}
+                              fill
+                              sizes="80px"
+                              className="object-cover"
+                              unoptimized={coverUnoptimized}
+                            />
+                          </button>
+
+                          <div className="min-w-0">
+                            <div className="inline-flex items-center rounded-full border border-neutral-200 bg-base-white px-md py-0.5 text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
+                              {categoryPillLabel}
+                            </div>
+
+                            <div className="mt-md text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
+                              {loan.title}
+                            </div>
+                            <div className="mt-xs text-text-xs font-medium tracking-[-0.02em] text-neutral-500">
+                              {loan.authorName}
+                            </div>
+
+                            <div className="mt-md flex items-center gap-sm text-text-xs font-semibold tracking-[-0.02em] text-neutral-600">
+                              <span>{borrowedLabel}</span>
+                              <span className="text-neutral-300">·</span>
+                              <span>{durationLabel}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="h-9 w-32 shrink-0 rounded-full bg-primary-600 px-4xl text-text-xs font-bold tracking-[-0.02em] text-base-white"
+                          onClick={() => {
+                            if (!token) {
+                              router.push("/login");
+                              return;
+                            }
+                            if (!loan.bookId) {
+                              toast.error("Book tidak ditemukan.");
+                              return;
+                            }
+                            setReviewModal({
+                              open: true,
+                              bookId: loan.bookId,
+                              star: 0,
+                              comment: "",
+                              pending: false,
+                            });
+                          }}
+                        >
+                          Give Review
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {loansQuery.hasNextPage ? (
+              <div className="mt-3xl flex justify-center">
+                <button
+                  type="button"
+                  disabled={loansQuery.isFetchingNextPage}
+                  onClick={() => loansQuery.fetchNextPage()}
+                  className="h-11 w-44 rounded-full border border-neutral-200 bg-base-white text-text-sm font-bold tracking-[-0.02em] text-neutral-950 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loansQuery.isFetchingNextPage ? "Loading..." : "Load More"}
+                </button>
+              </div>
+            ) : null}
+
+            <DesktopFooter />
+          </main>
+        </div>
+      </div>
+
+      {reviewModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-xl"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !reviewModal.pending) {
+              setReviewModal((prev) => ({ ...prev, open: false }));
+            }
+          }}
+        >
+          <Card className="w-full max-w-80 rounded-3xl border border-neutral-200 bg-base-white px-2xl py-2xl shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="text-text-sm font-bold tracking-[-0.02em] text-neutral-950">
+                Give Review
+              </div>
+              <button
+                type="button"
+                aria-label="Close"
+                disabled={reviewModal.pending}
+                className="grid h-8 w-8 place-items-center rounded-full text-neutral-600 disabled:opacity-60"
+                onClick={() =>
+                  setReviewModal((prev) => ({ ...prev, open: false }))
+                }
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-xl text-center text-text-xs font-semibold tracking-[-0.02em] text-neutral-700">
+              Give Rating
+            </div>
+
+            <div className="mt-md flex items-center justify-center gap-md">
+              {Array.from({ length: 5 }).map((_, idx) => {
+                const value = idx + 1;
+                const active = value <= reviewModal.star;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-label={`Rate ${value} star`}
+                    disabled={reviewModal.pending}
+                    className="grid h-8 w-8 place-items-center disabled:opacity-60"
+                    onClick={() =>
+                      setReviewModal((prev) => ({ ...prev, star: value }))
+                    }
+                  >
+                    <Image
+                      src={
+                        active
+                          ? "/User-Review/Star.svg"
+                          : "/User-Review/Star-mute.svg"
+                      }
+                      alt=""
+                      width={20}
+                      height={20}
+                      className="h-5 w-5"
+                    />
+                  </button>
+                );
+              })}
+            </div>
+
+            <textarea
+              value={reviewModal.comment}
+              onChange={(e) =>
+                setReviewModal((prev) => ({
+                  ...prev,
+                  comment: e.target.value,
+                }))
+              }
+              placeholder="Please share your thoughts about this book"
+              className="mt-xl h-40 w-full resize-none rounded-3xl border border-neutral-200 bg-base-white px-xl py-xl text-text-xs font-medium tracking-[-0.02em] text-neutral-950 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-600/30"
+              disabled={reviewModal.pending}
+            />
+
+            <button
+              type="button"
+              disabled={reviewModal.pending}
+              className="mt-xl h-11 w-full rounded-full bg-primary-600 px-4xl text-text-sm font-bold tracking-[-0.02em] text-base-white disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={async () => {
+                if (!token) {
+                  router.push("/login");
+                  return;
+                }
+
+                if (!reviewModal.bookId) {
+                  toast.error("Book tidak ditemukan.");
+                  return;
+                }
+
+                if (reviewModal.star < 1 || reviewModal.star > 5) {
+                  toast.error("Silakan pilih rating bintang (1-5).");
+                  return;
+                }
+
+                setReviewModal((prev) => ({ ...prev, pending: true }));
+                try {
+                  await http.post(
+                    "/api/reviews",
+                    {
+                      bookId: reviewModal.bookId,
+                      star: reviewModal.star,
+                      comment: reviewModal.comment.trim(),
+                    },
+                    {
+                      headers: token
+                        ? { Authorization: `Bearer ${token}` }
+                        : undefined,
+                    },
+                  );
+
+                  toast.success("Review berhasil dikirim.");
+                  setReviewModal({
+                    open: false,
+                    bookId: null,
+                    star: 0,
+                    comment: "",
+                    pending: false,
+                  });
+                } catch (err) {
+                  toast.error(getErrorMessage(err));
+                  setReviewModal((prev) => ({ ...prev, pending: false }));
+                }
+              }}
+            >
+              {reviewModal.pending ? "Sending..." : "Send"}
+            </button>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
