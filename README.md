@@ -1,6 +1,51 @@
-LIBRARY APP (User App)
+# Library App (User Application)
+
+A modern web application that allows users to browse books, borrow items, and manage their reading activities through a clean and responsive interface.
+This project focuses on building a scalable front-end architecture using modern React ecosystem tools.
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Live Demo
+
+https://project1-library-app.vercel.app/
+
+## Repository
+
+https://github.com/AI-NovaNX/Project1-Library-App
+
+## Tech Stack
+
+This project is built using a modern front-end stack focused on performance, maintainability, and developer productivity.
+
+- **React + TypeScript** – Main framework for building the UI with strong type safety.
+- **Tailwind CSS** – Utility-first CSS framework for fast and consistent styling.
+- **shadcn/ui** – Prebuilt and customizable UI components.
+- **Redux Toolkit** – Manages global state such as authentication token, filters, cart, and UI state.
+- **TanStack Query** – Handles data fetching, caching, and synchronization with the server.
+- **Optimistic UI** – Improves user experience by instantly updating the interface before server confirmation.
+- **Day.js** – Lightweight library for date formatting and manipulation.
+
+## Features
+
+This application provides a simple and intuitive experience for users to explore and manage library resources.
+
+- **User Authentication**  
+  Users can register and log in securely. Authentication tokens are stored to maintain session access and allow users to interact with protected features.
+
+- **Browse and Discover Books**  
+  Users can explore the available book collection, apply filters, search for specific titles, and open detailed pages to view more information about each book.
+
+- **Borrow Books with Optimistic UI**  
+  Users can borrow books directly from the interface. The available stock updates instantly using an optimistic UI approach to provide a faster and smoother user experience.
+
+- **Add and View Reviews**  
+  Users can write reviews for books they have read. Newly added reviews appear immediately, making the interaction feel responsive and real-time.
+
+- **My Loans Dashboard**  
+  Users can track their borrowed books, monitor loan status, and view due dates to manage their reading schedule effectively.
+
+- **Profile Management**  
+  Users can update their personal profile information and view their reading statistics and activity history.
+  
 ## Getting Started
 
 First, run the development server:
@@ -21,17 +66,6 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+## Project Structure
+<img width="157" height="175" alt="image" src="https://github.com/user-attachments/assets/e666d94d-474c-48a1-81df-ccd416fd3c22" />
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
